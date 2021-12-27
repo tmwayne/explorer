@@ -149,7 +149,7 @@ void *Deque_remhi(D deque) {
 
   deque->tail = q->llink;
 
-  if (-deque->length == 0)
+  if (--deque->length == 0)
     deque->head = deque->tail = NULL;
   else
     q->llink->rlink = NULL;

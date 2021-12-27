@@ -36,7 +36,7 @@ typedef struct Data_T {
   struct cursor cursor;
   int (*open)(void *args);
   int (*load)(struct Data_T *data, Frame_T frame, void *args);
-  int (*fetch)(struct Data_T *data, Frame_T frame, int nrows, int ncols, void *args);
+  int (*shift)(struct Data_T *data, Frame_T frame, int nrows, int ncols, void *args);
   int (*close)();
   void *args;
 } *Data_T;

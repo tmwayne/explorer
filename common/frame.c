@@ -147,57 +147,87 @@ int Data_file_load(Data_T data, Frame_T frame, void *args) {
 
 }
 
-int Data_file_fetch(Data_T data, Frame_T frame, int ncol, int nrow, void *args) {
+int shift_col(Data_T data, Frame_T frame, int n, FILE *fd) {
 
-  Data_file_args _args = args;
   char *line = CALLOC(256, sizeof(char));
   char *word = NULL, *saveptr = NULL;
   int err, icol;
+  
+  void *(*pop)(Deque_T deque);
+  void *(*push)(Deque_T deque, void *x);
+  int pop_ind, new_col_ind;
 
-  // extra column (ncol = 1)
+  if (n == 1) { // add col to the right
+    pop_ind = 0;
+    new_col_ind = data->cursor.col + 1;
+    pop = Deque_remlo;
+    push = Deque_addhi;
+    data->cursor.col++;
+  } else {      // add col to the left
+    pop_ind = Deque_length(frame->data)-1;
+    new_col_ind = data->cursor.col - frame->ncols;
+    pop = Deque_remhi;
+    push = Deque_addlo;
+    data->cursor.col--;
+  }
+
   // 1. Free values in first column
-  free(Deque_remlo(frame->headers));
+  free(pop(frame->headers));
 
-  Deque_map(Deque_get(frame->data, 0), free_char_node, NULL);
-  Deque_T col = Deque_remlo(frame->data);
+  Deque_map(Deque_get(frame->data, pop_ind), free_char_node, NULL);
+  Deque_T col = pop(frame->data);
   Deque_free(&col);
 
   // 2. Add new column
   col = Deque_new();
-  Deque_addhi(frame->data, col);
+  push(frame->data, col);
 
   // 3. add values based on row, col indices from data
 
   // TODO: move fd to correct line based on index instead of starting from beginning
-  rewind(_args->fd);
+  rewind(fd);
 
   // TODO: check for error here
-  get_line(NULL, line, 255, _args->fd);
+  get_line(NULL, line, 255, fd);
 
   for (
     word = get_tok_r(line, '|', &saveptr), icol=0;
-    icol <= data->cursor.col;
+    icol < new_col_ind;
     word = get_tok_r(NULL, '|', &saveptr), icol++
   ) ;
 
-  Deque_addhi(frame->headers, strdup(word));
+  // Deque_addhi(frame->headers, strdup(word));
+  push(frame->headers, strdup(word));
 
   // TODO: determine which row to start on based on frame's cursor and data's cursor
-  while ((err = get_line(NULL, line, 255, _args->fd)) == E_OK) {
+  while ((err = get_line(NULL, line, 255, fd)) == E_OK) {
     saveptr = NULL;
     icol = 0;
     do {
       if (saveptr == NULL) word = get_tok_r(line, '|', &saveptr);
-      if (word != NULL && icol == data->cursor.col+1)
-        Deque_addhi(col, strdup(word)); // add the value for the row
+      if (word != NULL && icol == new_col_ind)
+        // Deque_addhi(col, strdup(word)); // add the value for the row
+        push(col, strdup(word));
       icol++;
     } while ((word = get_tok_r(NULL, '|', &saveptr)) != NULL);
   }
 
-  data->cursor.col++;
+  free(line);
 
   // TODO: return error status
   return 1;
+
+}
+
+int Data_file_shift(Data_T data, Frame_T frame, int nrows, int ncols, void *args) {
+
+  Data_file_args _args = args;
+  int err;
+
+  if (ncols)
+    err = shift_col(data, frame, ncols, _args->fd);
+
+  return err;
 
 }
 
@@ -226,7 +256,7 @@ Data_T Data_file_init(char *file, int headers) {
   data->headers = headers;
   data->open = Data_file_open;
   data->load = Data_file_load;
-  data->fetch = Data_file_fetch;
+  data->shift = Data_file_shift;
   data->close = Data_file_close;
   data->args = args;
 

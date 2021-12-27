@@ -45,7 +45,8 @@ int main(int argc, char **argv) {
   data->open(data->args);
   data->load(data, frame, data->args);
 
-  // data->fetch(data, frame, 0, 1, data->args);
+  // data->shift(data, frame, 0, 1, data->args);
+  // data->shift(data, frame, 0, -1, data->args);
  
   initscr();
   cbreak(); // disable line buffering
@@ -68,27 +69,40 @@ int main(int argc, char **argv) {
 
     chgat(frame->col_width-1, A_NORMAL, 0, NULL);
 
+    int frame_col_ind = cursor.col / frame->col_width;
+    int frame_max_col_ind = frame->ncols - 1;
+    int data_start_col_ind = data->cursor.col - (frame->ncols-1);
+    int data_max_col_ind = data->ncols - 1;
+
+
     // TODO: create parse for this routine
     // Parse input
     switch (ch) {
-      case 'j':
+      case 'j': // down
         if (cursor.row < frame->nrows) cursor.row++;
         break;
-      case 'k':
+      case 'k': // up
         if (cursor.row > 0) cursor.row--;
         break;
-      case 'h':
-        if (cursor.col/frame->col_width > 0) 
+
+      case 'h': // left
+        if (frame_col_ind > 0) 
           cursor.col -= frame->col_width;
-        break;
-      case 'l':
-        if (cursor.col/frame->col_width < frame->ncols-1) 
-          cursor.col += frame->col_width;
-        else if (data->cursor.col < data->ncols-1) {
-          data->fetch(data, frame, 0, 1, data->args);
+        else if (data_start_col_ind > 0) {
+          data->shift(data, frame, 0, -1, data->args);
           Frame_print(frame);
         }
         break;
+
+      case 'l': // right
+        if (frame_col_ind < frame_max_col_ind) 
+          cursor.col += frame->col_width;
+        else if (data->cursor.col < data_max_col_ind) {
+          data->shift(data, frame, 0, 1, data->args);
+          Frame_print(frame);
+        }
+        break;
+
       case 'q':
         done = 0;
         break;
