@@ -43,7 +43,9 @@ int main(int argc, char **argv) {
   );
 
   data->open(data->args);
-  data->load(frame, data->args);
+  data->load(data, frame, data->args);
+
+  // data->fetch(data, frame, 0, 1, data->args);
  
   initscr();
   cbreak(); // disable line buffering
@@ -58,7 +60,7 @@ int main(int argc, char **argv) {
 
   do {
 
-    move(cursor.x, cursor.y);
+    move(cursor.row, cursor.col); // (row, col)
     chgat(frame->col_width-1, A_REVERSE, 0, NULL);
 
     refresh();    // render
@@ -70,18 +72,22 @@ int main(int argc, char **argv) {
     // Parse input
     switch (ch) {
       case 'j':
-        if (cursor.x < frame->nrows) cursor.x++;
+        if (cursor.row < frame->nrows) cursor.row++;
         break;
       case 'k':
-        if (cursor.x > 0) cursor.x--;
+        if (cursor.row > 0) cursor.row--;
         break;
       case 'h':
-        if (cursor.y/frame->col_width > 0) 
-          cursor.y -= frame->col_width;
+        if (cursor.col/frame->col_width > 0) 
+          cursor.col -= frame->col_width;
         break;
       case 'l':
-        if (cursor.y/frame->col_width < frame->ncols-1) 
-          cursor.y += frame->col_width;
+        if (cursor.col/frame->col_width < frame->ncols-1) 
+          cursor.col += frame->col_width;
+        else if (data->cursor.col < data->ncols-1) {
+          data->fetch(data, frame, 0, 1, data->args);
+          Frame_print(frame);
+        }
         break;
       case 'q':
         done = 0;

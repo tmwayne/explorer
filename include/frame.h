@@ -14,8 +14,8 @@
 #include <ncurses.h>
 
 struct cursor {
-  int x; // column
-  int y; // row
+  int row;
+  int col;
 };
 
 typedef struct Frame_T {
@@ -32,11 +32,11 @@ typedef struct Frame_T {
 typedef struct Data_T {
   int ncols;
   int nrows;
-  bool headers;
+  int headers;
   struct cursor cursor;
   int (*open)(void *args);
-  int (*load)(Frame_T frame, void *args);
-  int (*fetch)(Frame_T frame, int nrows, int ncols, void *args);
+  int (*load)(struct Data_T *data, Frame_T frame, void *args);
+  int (*fetch)(struct Data_T *data, Frame_T frame, int nrows, int ncols, void *args);
   int (*close)();
   void *args;
 } *Data_T;
