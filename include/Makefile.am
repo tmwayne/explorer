@@ -1,3 +1,4 @@
-noinst_HEADERS = common.h \
+noinst_HEADERS = deque.h \
+	frame.h \
 	argparse.h \
 	minunit.h
