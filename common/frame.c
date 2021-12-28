@@ -11,15 +11,14 @@
 #include "deque.h"
 #include "frame.h"
 
+#define GET_TOK_R(line, delim, saveptr) \
+  (get_tok_r( *saveptr ? NULL : line, delim, saveptr))
 
-void free_char_node(void **x, void *cl) {
+static void free_char_node(void **x, void *cl) {
 
   FREE(* (char **) x);
 
 }
-
-#define GET_TOK_R(line, delim, saveptr) \
-  (get_tok_r( *saveptr ? NULL : line, delim, saveptr))
 
 Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 
@@ -72,6 +71,7 @@ int Frame_print(Frame_T frame) {
 
 typedef struct file_args {
   char *path;
+  char delim;
   FILE *fd;
 } *file_args;
 
@@ -92,13 +92,11 @@ int file_open(void *args) {
 int file_load(Data_T data, Frame_T frame, void *args) {
 
   FILE *fd = ((file_args) args)->fd;
+  char delim = ((file_args) args)->delim;
 
   char *line = CALLOC(256, sizeof(char));
   char *word = NULL, *saveptr = NULL;
-
   Deque_T col = NULL;
-
-
 
   // Initialize data columns, column counts, and headers
 
@@ -106,7 +104,7 @@ int file_load(Data_T data, Frame_T frame, void *args) {
   if (get_line(NULL, line, 255, fd) != E_OK) return 0;
 
   int icol = 0;
-  while ((word = GET_TOK_R(line, '|', &saveptr))) {
+  while ((word = GET_TOK_R(line, delim, &saveptr))) {
     if (icol < frame->max_cols) {
       Deque_addhi(frame->data, Deque_new());
       frame->ncols++;
@@ -127,7 +125,7 @@ int file_load(Data_T data, Frame_T frame, void *args) {
     if (irow < frame->max_rows) {
       saveptr = NULL;
       icol = 0;
-      while ((word = GET_TOK_R(line, '|', &saveptr)) && icol < frame->max_cols) {
+      while ((word = GET_TOK_R(line, delim, &saveptr)) && icol < frame->max_cols) {
         col = Deque_get(frame->data, icol);
         Deque_addhi(col, strdup(word)); // add the value for the row
         icol++;
@@ -150,6 +148,7 @@ int file_load(Data_T data, Frame_T frame, void *args) {
 int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
 
   FILE *fd = ((file_args) args)->fd;
+  char delim = ((file_args) args)->delim;
 
   char *line = CALLOC(256, sizeof(char));
   char *word = NULL, *saveptr = NULL;
@@ -193,7 +192,7 @@ int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
     // TODO: return error code : unable to load first line
     if (get_line(NULL, line, 255, fd) != E_OK) return 0; 
 
-    while ((word = GET_TOK_R(line, '|', &saveptr)) && icol++ < new_col_ind) ;
+    while ((word = GET_TOK_R(line, delim, &saveptr)) && icol++ < new_col_ind) ;
 
     if (!word) return 0; // return error code
     push(frame->headers, strdup(word));
@@ -205,7 +204,8 @@ int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
     else if (irow >= data->inframe.first_row) {
       saveptr = NULL;
       icol = 0;
-      while ((word = GET_TOK_R(line, '|', &saveptr)) && icol++ < new_col_ind) ;
+      while ((word = GET_TOK_R(line, delim, &saveptr)))
+        if (icol++ >= new_col_ind) break;
 
       // TODO: return error code here: value for selected column doesn't exist
       if (!word) return 0; 
@@ -227,8 +227,8 @@ int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
 int file_shift_row(Data_T data, Frame_T frame, int n, void *args) {
 
   FILE *fd = ((file_args) args)->fd;
+  char delim = ((file_args) args)->delim;
 
-  // 1. Set parameters
   char *line = CALLOC(256, sizeof(char));
   char *word = NULL, *saveptr = NULL;
   
@@ -261,7 +261,7 @@ int file_shift_row(Data_T data, Frame_T frame, int n, void *args) {
   }
 
   int icol = 0, i = 0;
-  while ((word = GET_TOK_R(line, '|', &saveptr))) {
+  while ((word = GET_TOK_R(line, delim, &saveptr))) {
     if (icol > data->inframe.last_col) break;
     if (icol >= data->inframe.first_col) {
       // TODO: add error code: value doesn't exist
@@ -293,7 +293,7 @@ int file_close(void *args) {
 
 }
 
-Data_T Data_file_init(char *path, int headers) {
+Data_T Data_file_init(char *path, char delim, int headers) {
 
   Data_T data;
   NEW0(data);
@@ -309,6 +309,7 @@ Data_T Data_file_init(char *path, int headers) {
   NEW0(args);
 
   args->path = path;
+  args->delim = delim;
   data->args = args;
 
   return data;

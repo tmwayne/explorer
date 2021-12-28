@@ -9,6 +9,7 @@
 #include <stdio.h>    // fprintf
 #include <stdlib.h>   // exit, EXIT_FAILURE
 #include <ncurses.h>
+#include "argparse.h"
 #include "deque.h"
 #include "frame.h"
 
@@ -22,30 +23,29 @@ int main(int argc, char **argv) {
 
   // TODO: setup configparse
 
-  // TODO: setup argparse
-  if (argc != 2) {
-    fprintf(stderr, "Usage: %s path\n", argv[0]);
-    exit(EXIT_FAILURE);
-  }
+  // Command line arguments
+  struct arguments arguments;
+  arguments.headers = 1;
+  arguments.delim = '|';
+  argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-  char *path = argv[1];
   int col_width = 16;
   int max_cols = 4;
   int max_rows = 5;
-  int headers = 1;
 
   // TODO: set dynamic column sizing
   // TODO: calculate # of rows and cols based on window
   Frame_T frame = Frame_init(
-    col_width,  // col_width
-    max_cols,   // max_cols
-    max_rows,   // max_rows
-    headers     // headers
+    col_width,            // col_width
+    max_cols,             // max_cols
+    max_rows,             // max_rows
+    arguments.headers     // headers
   );
 
   Data_T data = Data_file_init(
-    path,       // path
-    headers     // headers
+    arguments.path,       // path
+    arguments.delim,      // delim
+    arguments.headers     // headers
   );
 
   data->open(data->args);
