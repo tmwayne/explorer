@@ -18,19 +18,18 @@ void free_char_node(void **x, void *cl) {
 
 }
 
-Frame_T Frame_init(int col_width, int max_cols, int max_rows) {
+#define GET_TOK_R(line, delim, saveptr) \
+  (get_tok_r( *saveptr ? NULL : line, delim, saveptr))
+
+Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 
   Frame_T frame;
   NEW0(frame);
 
   frame->col_width = col_width;
   frame->max_cols = max_cols;
-  frame->max_rows = max_rows;
-  frame->ncols = 0;
-  frame->nrows = 0;
-  frame->cursor.row = 0;
-  frame->cursor.col = 0;
-  frame->headers = Deque_new();
+  frame->max_rows = max_rows - (headers ? 1 : 0);
+  frame->headers = headers ? Deque_new() : NULL;
   frame->data = Deque_new();
 
   return frame;
@@ -43,24 +42,26 @@ int Frame_print(Frame_T frame) {
   // lists.gnu.org/archive/html/bug-ncurses/2014-01/msg00007.html
   erase();
 
-  int start = 1;
+  int headers = frame->headers ? 1 : 0;
 
-  for (int c=0; c<frame->ncols; c++) {
-    int text_start = c*frame->col_width+1;
+  for (int icol=0; icol<frame->ncols; icol++) {
+    int text_start = icol*frame->col_width+1;
     int text_width = frame->col_width-3;
 
     // Print headers
-    mvaddnstr(0, text_start, Deque_get(frame->headers, c), text_width);
-    if (c < frame->ncols-1)
-      mvaddstr(0, (c+1)*frame->col_width-1, "|");
+    if (frame->headers) {
+      mvaddnstr(0, text_start, Deque_get(frame->headers, icol), text_width);
+      if (icol < frame->ncols-1)
+        mvaddstr(0, (icol+1)*frame->col_width-1, "|");
+    }
     
     // Print data
-    Deque_T col = Deque_get(frame->data, c);
+    Deque_T col = Deque_get(frame->data, icol);
 
-    for (int r=0, n=0; r<frame->nrows; r++, n++) {
-      mvaddnstr(r+start, text_start, Deque_get(col, r), text_width);
-      if (c < frame->ncols-1)
-        mvaddstr(r+start, (c+1)*frame->col_width-1, "|");
+    for (int irow=0, n=0; irow<frame->nrows; irow++, n++) {
+      mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
+      if (icol < frame->ncols-1) // print for all but the last column
+        mvaddstr(irow + headers, (icol+1)*frame->col_width-1, "|");
     }
   }
 
@@ -69,85 +70,75 @@ int Frame_print(Frame_T frame) {
 
 }
 
-typedef struct Data_file_args {
+typedef struct file_args {
   char *path;
   FILE *fd;
-} *Data_file_args;
+} *file_args;
 
-int Data_file_open(void *args) {
-  
-  Data_file_args _args = args;
+int file_open(void *args) {
 
-  // TODO: check for error
+  file_args _args = args;
+
   _args->fd = fopen(_args->path, "r");
+
+  // TODO: return error code: unable to open file
+  if (_args->fd) return 0;
   
   // TODO: return error status
   return 1;
 
 }
 
-int Data_file_load(Data_T data, Frame_T frame, void *args) {
+int file_load(Data_T data, Frame_T frame, void *args) {
 
-  Data_file_args _args = args;
-
-  int err;
+  FILE *fd = ((file_args) args)->fd;
 
   char *line = CALLOC(256, sizeof(char));
   char *word = NULL, *saveptr = NULL;
 
   Deque_T col = NULL;
-  int icol = 0, irow = 0;
 
-  // Load the first line and create a deque for each column
-  err = get_line(NULL, line, 255, _args->fd);
-  if (err != E_OK) {
-    fprintf(stderr, "Error reading in line\n");
-    exit(EXIT_FAILURE);
-  }
 
-  // Load headers
-  for (
-    word = get_tok_r(line, '|', &saveptr);
-    word;
-    word = get_tok_r(NULL, '|', &saveptr)
-  ) {
-    if (frame->ncols < frame->max_cols) {
-      col = Deque_new();
-      Deque_addhi(frame->data, col); // add a new col
-      Deque_addhi(frame->headers, strdup(word)); // add the header
+
+  // Initialize data columns, column counts, and headers
+
+  // TODO: add error code: unable to read first line
+  if (get_line(NULL, line, 255, fd) != E_OK) return 0;
+
+  int icol = 0;
+  while ((word = GET_TOK_R(line, '|', &saveptr))) {
+    if (icol < frame->max_cols) {
+      Deque_addhi(frame->data, Deque_new());
       frame->ncols++;
-    }
+      if (data->headers) 
+        Deque_addhi(frame->headers, strdup(word)); // add the header
+    } 
     data->ncols++;
+    icol++;
   }
-
-  // data->nrows++;
-  // data->cursor.col = frame->ncols - 1;
-  data->inframe.last_col = frame->ncols - 1;
 
   // TODO: save start of each line in an array
 
-  // Load the remaining rows
-
-  while ((err = get_line(NULL, line, 255, _args->fd)) == E_OK) {
+  if (!data->headers) rewind(fd);
+  
+  // Load data
+  int irow = 0;
+  while (get_line(NULL, line, 255, fd) == E_OK) {
     if (irow < frame->max_rows) {
       saveptr = NULL;
-      for (
-        word = get_tok_r(line, '|', &saveptr), icol=0;
-        word && icol < frame->ncols;
-        word = get_tok_r(NULL, '|', &saveptr), icol++
-      ) {
+      icol = 0;
+      while ((word = GET_TOK_R(line, '|', &saveptr)) && icol < frame->max_cols) {
         col = Deque_get(frame->data, icol);
         Deque_addhi(col, strdup(word)); // add the value for the row
+        icol++;
       }
       frame->nrows++;
       irow++;
-      // data->nrows++;
     }
   }
 
-  // TODO: this assumes there is always a header row
-  // data->cursor.row = frame->nrows;
-  data->inframe.last_row = frame->nrows;
+  data->inframe.last_col = frame->ncols - 1;
+  data->inframe.last_row = frame->nrows - 1;
 
   FREE(line);
 
@@ -156,11 +147,12 @@ int Data_file_load(Data_T data, Frame_T frame, void *args) {
 
 }
 
-int shift_col(Data_T data, Frame_T frame, int n, FILE *fd) {
+int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
+
+  FILE *fd = ((file_args) args)->fd;
 
   char *line = CALLOC(256, sizeof(char));
   char *word = NULL, *saveptr = NULL;
-  int err, icol, irow = 0, nrow = 0;
   
   void *(*pop)(Deque_T deque);
   void *(*push)(Deque_T deque, void *x);
@@ -168,27 +160,18 @@ int shift_col(Data_T data, Frame_T frame, int n, FILE *fd) {
 
   if (n == 1) { // add col to the right
     pop_ind = 0;
-    // new_col_ind = data->cursor.col + 1;
     new_col_ind = data->inframe.last_col + 1;
     pop = Deque_remlo;
     push = Deque_addhi;
-    // data->cursor.col++;
-    data->inframe.first_col++;
-    data->inframe.last_col++;
-  } else {      // add col to the left
+  } else if (n == -1) {      // add col to the left
     pop_ind = Deque_length(frame->data)-1;
-    // new_col_ind = data->cursor.col - frame->ncols;
     new_col_ind = data->inframe.first_col - 1;
     pop = Deque_remhi;
     push = Deque_addlo;
-    // data->cursor.col--;
-    data->inframe.first_col--;
-    data->inframe.last_col--;
-  }
+  // TODO: return error code: invalid n
+  } else return 0;
 
-  // 1. Free values in first column
-  free(pop(frame->headers));
-
+    // 1. Free values in first column
   Deque_map(Deque_get(frame->data, pop_ind), free_char_node, NULL);
   Deque_T col = pop(frame->data);
   Deque_free(&col);
@@ -202,44 +185,48 @@ int shift_col(Data_T data, Frame_T frame, int n, FILE *fd) {
   // TODO: move fd to correct line based on index instead of starting from beginning
   rewind(fd);
 
-  // TODO: check for error here
-  get_line(NULL, line, 255, fd);
+  int icol = 0;
+  if (data->headers) {
 
-  for (
-    word = get_tok_r(line, '|', &saveptr), icol=0;
-    word && icol < new_col_ind;
-    word = get_tok_r(NULL, '|', &saveptr), icol++
-  ) ;
+    free(pop(frame->headers));
 
-  if (!word) return -1;
+    // TODO: return error code : unable to load first line
+    if (get_line(NULL, line, 255, fd) != E_OK) return 0; 
 
-  push(frame->headers, strdup(word));
+    while ((word = GET_TOK_R(line, '|', &saveptr)) && icol++ < new_col_ind) ;
 
-  while ((err = get_line(NULL, line, 255, fd)) == E_OK) {
-    // TODO: this assumes headers
-    // if (irow >= data->cursor.row - frame->nrows && nrow < frame->max_rows) {
-    if (irow >= data->inframe.first_row && nrow < frame->max_rows) {
+    if (!word) return 0; // return error code
+    push(frame->headers, strdup(word));
+  }
+
+  int irow = 0;
+  while (get_line(NULL, line, 255, fd) == E_OK) {
+    if (irow > data->inframe.last_row) break;
+    else if (irow >= data->inframe.first_row) {
       saveptr = NULL;
-      for (
-        word = get_tok_r(line, '|', &saveptr), icol=0;
-        word && icol < new_col_ind;
-        word = get_tok_r(NULL, '|', &saveptr), icol++
-      ) ;
-      if (!word) return -1;
+      icol = 0;
+      while ((word = GET_TOK_R(line, '|', &saveptr)) && icol++ < new_col_ind) ;
+
+      // TODO: return error code here: value for selected column doesn't exist
+      if (!word) return 0; 
       Deque_addhi(col, strdup(word));
-      nrow++;
     }
     irow++;
   }
 
+  data->inframe.first_col += n;
+  data->inframe.last_col += n;
+
   free(line);
 
   // TODO: return error status
-  return 0;
+  return 1;
 
 }
 
-int shift_row(Data_T data, Frame_T frame, int n, FILE *fd) {
+int file_shift_row(Data_T data, Frame_T frame, int n, void *args) {
+
+  FILE *fd = ((file_args) args)->fd;
 
   // 1. Set parameters
   char *line = CALLOC(256, sizeof(char));
@@ -247,12 +234,6 @@ int shift_row(Data_T data, Frame_T frame, int n, FILE *fd) {
   
   void *(*pop)(Deque_T deque);
   void *(*push)(Deque_T deque, void *x);
-
-  // 3. Load data, fast forward to select right
-  // 4. Push data onto each column
-  
-  int err;
-  int irow = 0, icol = 0, i = 0;
   int new_row_ind;
 
   if (n == 1) { // add row on bottom (scroll down)
@@ -260,37 +241,37 @@ int shift_row(Data_T data, Frame_T frame, int n, FILE *fd) {
     pop = Deque_remlo;
     push = Deque_addhi;
   } else if (n == -1) { // add row on top (scroll up)
-    // TODO: make sure this is greater than 0
     new_row_ind = data->inframe.first_row - 1;
     pop = Deque_remhi;
     push = Deque_addlo;
-  }
+  // TODO: return error code: invalid n
+  } else return 0;
 
   // TODO: use row index
   rewind(fd);
 
   // Fast-forward to the correct row
-  // while ((err = get_line(NULL, line, 255, fd))) {
+  int irow = -data->headers;
   while (1) {
-    err = get_line(NULL, line, 255, fd);
-    if (err == E_OK) {
+    if (get_line(NULL, line, 255, fd) == E_OK) {
       if (irow++ < new_row_ind) continue;
       else break;
-    } else if (irow == new_row_ind) return 0; // no new row
+      // TODO: add error code: no new row
+    } else if (irow <= new_row_ind) return 0; 
   }
 
-  for (
-    word = get_tok_r(line, '|', &saveptr), icol=0;
-    word && icol <= data->inframe.last_col;
-    word = get_tok_r(NULL, '|', &saveptr), icol++
-  ) {
+  int icol = 0, i = 0;
+  while ((word = GET_TOK_R(line, '|', &saveptr))) {
+    if (icol > data->inframe.last_col) break;
     if (icol >= data->inframe.first_col) {
-      if (!word) return -1;
+      // TODO: add error code: value doesn't exist
+      if (!word) return 0;
       Deque_T col = Deque_get(frame->data, i);
       free(pop(col));
       push(col, strdup(word));
       i++;
     }
+    icol++;
   }
 
   data->inframe.first_row += n;
@@ -300,26 +281,14 @@ int shift_row(Data_T data, Frame_T frame, int n, FILE *fd) {
 
 }
 
-int Data_file_shift(Data_T data, Frame_T frame, int nrows, int ncols, void *args) {
+int file_close(void *args) {
 
-  Data_file_args _args = args;
+  FILE *fd = ((file_args) args)->fd;
 
-  int nadded = ncols ?
-    shift_col(data, frame, ncols, _args->fd) :
-    shift_row(data, frame, nrows, _args->fd);
-
-  return nadded;
-
-}
-
-int Data_file_close(void *args) {
-
-  Data_file_args _args = args;
-
-  // TODO: check for error
-  fclose(_args->fd);
+  // TODO: return error code: unable to close fd
+  if (fclose(fd)) return 0;
   
-  // TODO: return error status
+  // TODO: return error code: all ok
   return 1;
 
 }
@@ -329,16 +298,17 @@ Data_T Data_file_init(char *path, int headers) {
   Data_T data;
   NEW0(data);
 
-  Data_file_args args;
+  data->headers = headers ? 1 : 0; // any non-zero interpreted as 1
+  data->open = file_open;
+  data->load = file_load;
+  data->shift_col = file_shift_col;
+  data->shift_row = file_shift_row;;
+  data->close = file_close;
+
+  file_args args;
   NEW0(args);
 
   args->path = path;
-
-  data->headers = headers ? 1 : 0;
-  data->open = Data_file_open;
-  data->load = Data_file_load;
-  data->shift = Data_file_shift;
-  data->close = Data_file_close;
   data->args = args;
 
   return data;

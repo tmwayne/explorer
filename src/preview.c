@@ -29,18 +29,23 @@ int main(int argc, char **argv) {
   }
 
   char *path = argv[1];
+  int col_width = 16;
+  int max_cols = 4;
+  int max_rows = 5;
+  int headers = 1;
 
-  // TODO: max_rows doesn't include header, make consistent
   // TODO: set dynamic column sizing
+  // TODO: calculate # of rows and cols based on window
   Frame_T frame = Frame_init(
-    16,         // col_width
-    4,          // max_cols
-    4           // max_rows
+    col_width,  // col_width
+    max_cols,   // max_cols
+    max_rows,   // max_rows
+    headers     // headers
   );
 
   Data_T data = Data_file_init(
     path,       // path
-    1           // headers
+    headers     // headers
   );
 
   data->open(data->args);
@@ -76,16 +81,16 @@ int main(int argc, char **argv) {
     switch (ch) {
 
       case 'j': // down
-        if (cursor.row < frame->nrows) 
+        if (cursor.row < frame->nrows + data->headers - 1) 
           cursor.row++;
-        else if (data->shift(data, frame, 1, 0, data->args))
+        else if (data->shift_row(data, frame, 1, data->args))
           Frame_print(frame);
         break;
 
       case 'k': // up
         if (cursor.row > 0) cursor.row--;
-        else if (data->inframe.first_row > data->headers) {
-          data->shift(data, frame, -1, 0, data->args);
+        else if (data->inframe.first_row > 0) {
+          data->shift_row(data, frame, -1, data->args);
           Frame_print(frame);
         }
         break;
@@ -94,7 +99,7 @@ int main(int argc, char **argv) {
         if (frame_col > 0) 
           cursor.col -= frame->col_width;
         else if (data->inframe.first_col > 0) {
-          data->shift(data, frame, 0, -1, data->args);
+          data->shift_col(data, frame, -1, data->args);
           Frame_print(frame);
         }
         break;
@@ -103,7 +108,7 @@ int main(int argc, char **argv) {
         if (frame_col < frame->ncols-1) 
           cursor.col += frame->col_width;
         else if (data->inframe.last_col < data->ncols-1) {
-          data->shift(data, frame, 0, 1, data->args);
+          data->shift_col(data, frame, 1, data->args);
           Frame_print(frame);
         }
         break;
