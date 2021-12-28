@@ -30,11 +30,12 @@ int main(int argc, char **argv) {
 
   char *file = argv[1];
 
+  // TODO: max_rows doesn't include header, make consistent
   // TODO: set dynamic column sizing
   Frame_T frame = Frame_init(
     16,         // col_width
     4,          // max_cols
-    10          // max_rows
+    4           // max_rows
   );
 
   Data_T data = Data_file_init(
@@ -45,8 +46,7 @@ int main(int argc, char **argv) {
   data->open(data->args);
   data->load(data, frame, data->args);
 
-  // data->shift(data, frame, 0, 1, data->args);
-  // data->shift(data, frame, 0, -1, data->args);
+  // data->shift(data, frame, 1, 0, data->args);
  
   initscr();
   cbreak(); // disable line buffering
@@ -80,9 +80,15 @@ int main(int argc, char **argv) {
     switch (ch) {
       case 'j': // down
         if (cursor.row < frame->nrows) cursor.row++;
+        else if (data->shift(data, frame, 1, 0, data->args))
+          Frame_print(frame);
         break;
       case 'k': // up
         if (cursor.row > 0) cursor.row--;
+        else if (data->cursor.row > frame->max_rows) {
+          data->shift(data, frame, -1, 0, data->args);
+          Frame_print(frame);
+        }
         break;
 
       case 'h': // left

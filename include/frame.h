@@ -29,9 +29,12 @@ typedef struct Frame_T {
   Deque_T data;
 } *Frame_T;
 
+// TODO: add cursor start
 typedef struct Data_T {
   int ncols;
+  // TODO: nrows doesn't make sense without full scan, remove it?
   int nrows;
+  // TODO: add error checking that headers is 1 or 0
   int headers;
   struct cursor cursor;
   int (*open)(void *args);
