@@ -34,9 +34,14 @@ typedef struct Data_T {
   int ncols;
   // TODO: nrows doesn't make sense without full scan, remove it?
   int nrows;
-  // TODO: add error checking that headers is 1 or 0
   int headers;
   struct cursor cursor;
+  struct inframe {
+    int first_row;
+    int first_col;
+    int last_row;
+    int last_col;
+  } inframe;
   int (*open)(void *args);
   int (*load)(struct Data_T *data, Frame_T frame, void *args);
   int (*shift)(struct Data_T *data, Frame_T frame, int nrows, int ncols, void *args);
@@ -47,6 +52,6 @@ typedef struct Data_T {
 extern Frame_T  Frame_init(int col_width, int max_cols, int max_rows);
 extern int      Frame_print(Frame_T frame);
 
-extern Data_T Data_file_init(char *file, int headers);
+extern Data_T Data_file_init(char *path, int headers);
 
 #endif

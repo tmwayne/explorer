@@ -1,9 +1,9 @@
 //
 // -----------------------------------------------------------------------------
-// explorer.c
+// preview.c
 // -----------------------------------------------------------------------------
 //
-// Development version of explorer
+// Development version of Preview
 //
 
 #include <stdio.h>    // fprintf
@@ -24,11 +24,11 @@ int main(int argc, char **argv) {
 
   // TODO: setup argparse
   if (argc != 2) {
-    fprintf(stderr, "Usage: %s file\n", argv[0]);
+    fprintf(stderr, "Usage: %s path\n", argv[0]);
     exit(EXIT_FAILURE);
   }
 
-  char *file = argv[1];
+  char *path = argv[1];
 
   // TODO: max_rows doesn't include header, make consistent
   // TODO: set dynamic column sizing
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   );
 
   Data_T data = Data_file_init(
-    file, // file
+    path,       // path
     1           // headers
   );
 
@@ -69,41 +69,40 @@ int main(int argc, char **argv) {
 
     chgat(frame->col_width-1, A_NORMAL, 0, NULL);
 
-    int frame_col_ind = cursor.col / frame->col_width;
-    int frame_max_col_ind = frame->ncols - 1;
-    int data_start_col_ind = data->cursor.col - (frame->ncols-1);
-    int data_max_col_ind = data->ncols - 1;
-
+    int frame_col = cursor.col / frame->col_width;
 
     // TODO: create parse for this routine
     // Parse input
     switch (ch) {
+
       case 'j': // down
-        if (cursor.row < frame->nrows) cursor.row++;
+        if (cursor.row < frame->nrows) 
+          cursor.row++;
         else if (data->shift(data, frame, 1, 0, data->args))
           Frame_print(frame);
         break;
+
       case 'k': // up
         if (cursor.row > 0) cursor.row--;
-        else if (data->cursor.row > frame->max_rows) {
+        else if (data->inframe.first_row > data->headers) {
           data->shift(data, frame, -1, 0, data->args);
           Frame_print(frame);
         }
         break;
 
       case 'h': // left
-        if (frame_col_ind > 0) 
+        if (frame_col > 0) 
           cursor.col -= frame->col_width;
-        else if (data_start_col_ind > 0) {
+        else if (data->inframe.first_col > 0) {
           data->shift(data, frame, 0, -1, data->args);
           Frame_print(frame);
         }
         break;
 
       case 'l': // right
-        if (frame_col_ind < frame_max_col_ind) 
+        if (frame_col < frame->ncols-1) 
           cursor.col += frame->col_width;
-        else if (data->cursor.col < data_max_col_ind) {
+        else if (data->inframe.last_col < data->ncols-1) {
           data->shift(data, frame, 0, 1, data->args);
           Frame_print(frame);
         }

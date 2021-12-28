@@ -70,7 +70,7 @@ int Frame_print(Frame_T frame) {
 }
 
 typedef struct Data_file_args {
-  char *file;
+  char *path;
   FILE *fd;
 } *Data_file_args;
 
@@ -79,7 +79,7 @@ int Data_file_open(void *args) {
   Data_file_args _args = args;
 
   // TODO: check for error
-  _args->fd = fopen(_args->file, "r");
+  _args->fd = fopen(_args->path, "r");
   
   // TODO: return error status
   return 1;
@@ -121,7 +121,8 @@ int Data_file_load(Data_T data, Frame_T frame, void *args) {
   }
 
   // data->nrows++;
-  data->cursor.col = frame->ncols - 1;
+  // data->cursor.col = frame->ncols - 1;
+  data->inframe.last_col = frame->ncols - 1;
 
   // TODO: save start of each line in an array
 
@@ -145,7 +146,8 @@ int Data_file_load(Data_T data, Frame_T frame, void *args) {
   }
 
   // TODO: this assumes there is always a header row
-  data->cursor.row = frame->nrows;
+  // data->cursor.row = frame->nrows;
+  data->inframe.last_row = frame->nrows;
 
   FREE(line);
 
@@ -166,16 +168,22 @@ int shift_col(Data_T data, Frame_T frame, int n, FILE *fd) {
 
   if (n == 1) { // add col to the right
     pop_ind = 0;
-    new_col_ind = data->cursor.col + 1;
+    // new_col_ind = data->cursor.col + 1;
+    new_col_ind = data->inframe.last_col + 1;
     pop = Deque_remlo;
     push = Deque_addhi;
-    data->cursor.col++;
+    // data->cursor.col++;
+    data->inframe.first_col++;
+    data->inframe.last_col++;
   } else {      // add col to the left
     pop_ind = Deque_length(frame->data)-1;
-    new_col_ind = data->cursor.col - frame->ncols;
+    // new_col_ind = data->cursor.col - frame->ncols;
+    new_col_ind = data->inframe.first_col - 1;
     pop = Deque_remhi;
     push = Deque_addlo;
-    data->cursor.col--;
+    // data->cursor.col--;
+    data->inframe.first_col--;
+    data->inframe.last_col--;
   }
 
   // 1. Free values in first column
@@ -209,7 +217,8 @@ int shift_col(Data_T data, Frame_T frame, int n, FILE *fd) {
 
   while ((err = get_line(NULL, line, 255, fd)) == E_OK) {
     // TODO: this assumes headers
-    if (irow >= data->cursor.row - frame->nrows && nrow < frame->max_rows) {
+    // if (irow >= data->cursor.row - frame->nrows && nrow < frame->max_rows) {
+    if (irow >= data->inframe.first_row && nrow < frame->max_rows) {
       saveptr = NULL;
       for (
         word = get_tok_r(line, '|', &saveptr), icol=0;
@@ -245,16 +254,14 @@ int shift_row(Data_T data, Frame_T frame, int n, FILE *fd) {
   int err;
   int irow = 0, icol = 0, i = 0;
   int new_row_ind;
-  int col_start_ind = data->cursor.col - frame->ncols + 1;
-  int col_end_ind = data->cursor.col;
 
   if (n == 1) { // add row on bottom (scroll down)
-    new_row_ind = data->cursor.row + 1;
+    new_row_ind = data->inframe.last_row + 1;
     pop = Deque_remlo;
     push = Deque_addhi;
   } else if (n == -1) { // add row on top (scroll up)
     // TODO: make sure this is greater than 0
-    new_row_ind = data->cursor.row - frame->nrows;
+    new_row_ind = data->inframe.first_row - 1;
     pop = Deque_remhi;
     push = Deque_addlo;
   }
@@ -274,10 +281,10 @@ int shift_row(Data_T data, Frame_T frame, int n, FILE *fd) {
 
   for (
     word = get_tok_r(line, '|', &saveptr), icol=0;
-    word && icol <= col_end_ind;
+    word && icol <= data->inframe.last_col;
     word = get_tok_r(NULL, '|', &saveptr), icol++
   ) {
-    if (icol >= col_start_ind) {
+    if (icol >= data->inframe.first_col) {
       if (!word) return -1;
       Deque_T col = Deque_get(frame->data, i);
       free(pop(col));
@@ -286,8 +293,8 @@ int shift_row(Data_T data, Frame_T frame, int n, FILE *fd) {
     }
   }
 
-  if (n == 1) data->cursor.row++;
-  else data->cursor.row--;
+  data->inframe.first_row += n;
+  data->inframe.last_row += n;
   
   return 1;
 
@@ -317,7 +324,7 @@ int Data_file_close(void *args) {
 
 }
 
-Data_T Data_file_init(char *file, int headers) {
+Data_T Data_file_init(char *path, int headers) {
 
   Data_T data;
   NEW0(data);
@@ -325,9 +332,9 @@ Data_T Data_file_init(char *file, int headers) {
   Data_file_args args;
   NEW0(args);
 
-  args->file = file;
+  args->path = path;
 
-  data->headers = headers;
+  data->headers = headers ? 1 : 0;
   data->open = Data_file_open;
   data->load = Data_file_load;
   data->shift = Data_file_shift;

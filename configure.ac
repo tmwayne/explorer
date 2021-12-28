@@ -7,14 +7,14 @@
 #
 
 AC_PREREQ([2.69])
-AC_INIT([Explorer], [0.1], [tylerwayne3@gmail.com])
+AC_INIT([Preview], [0.1], [tylerwayne3@gmail.com])
 AM_INIT_AUTOMAKE([subdir-objects])
 
 LT_PREREQ([2.2.])
 LT_INIT([dlopen])
 
 AC_CONFIG_MACRO_DIRS([m4])
-AC_CONFIG_SRCDIR([src/explorer.c])
+AC_CONFIG_SRCDIR([src/preview.c])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
