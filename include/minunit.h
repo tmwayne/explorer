@@ -1,4 +1,5 @@
-/* Copyright (c) 2012 David Siñuela Pastor, siu.4coders@gmail.com
+/* 
+ * Copyright (c) 2012 David Siñuela Pastor, siu.4coders@gmail.com
  * 
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -20,7 +21,22 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#define mu_assert(message, test) do { if (!(test)) return message; } while (0)
-#define mu_run_test(test) do { char* message = test(); tests_run++; \
-                               if (message) return message; } while (0)
+#define mu_assert(message, cond) do { \
+    if (!(cond)) return message; \
+    else return 0; \
+  } while (0)
+
+#define mu_run_test(test) do { \
+    char* message = test(); tests_run++; \
+    if (message) return message; \
+  } while (0)
+
+#define mu_run_all(tests) do {\
+    for (int i=0; tests[i]; i++) { \
+      char *message = tests[i](); \
+      tests_run++; \
+      if (message) return message; \
+    } \
+  } while (0)
+
 extern int tests_run;
