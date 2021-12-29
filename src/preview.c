@@ -9,15 +9,25 @@
 #include <stdio.h>    // fprintf
 #include <stdlib.h>   // exit, EXIT_FAILURE
 #include <ncurses.h>
-#include "argparse.h"
-#include "deque.h"
-#include "frame.h"
+#include "argparse.h" // arguments, argp_parse
+#include "preview.h"
 
 void print_char_node(void **x, void *cl) {
 
   printf("%s\n", * (char **) x);
 
 }
+
+void yyerror(char *s) {
+
+  fprintf(stderr, "%s\n", s);
+
+}
+
+// TODO: this is declared globally so it can be seen by bison
+Frame_T frame;
+Data_T data;
+int done;
 
 int main(int argc, char **argv) {
 
@@ -33,21 +43,23 @@ int main(int argc, char **argv) {
   int max_cols = 4;
   int max_rows = 5;
 
+  // TODO: determine appropriate line length
   // TODO: set dynamic column sizing
   // TODO: calculate # of rows and cols based on window
-  Frame_T frame = Frame_init(
+  frame = Frame_init(
     col_width,            // col_width
     max_cols,             // max_cols
     max_rows,             // max_rows
     arguments.headers     // headers
   );
 
-  Data_T data = Data_file_init(
+  data = Data_file_init(
     arguments.path,       // path
     arguments.delim,      // delim
     arguments.headers     // headers
   );
 
+  // TODO: check for error if unable to open
   data->open(data->args);
   data->load(data, frame, data->args);
 
@@ -58,69 +70,22 @@ int main(int argc, char **argv) {
   noecho(); // disable echo for getch
   curs_set(0); // hide cursor
 
-  int ch, done = 1;
+  int ch;
+  done = 1;
 
   Frame_print(frame);
+  // TODO: move these lines to Frame_print
+  move(frame->cursor.row, frame->cursor.col); // (row, col)
+  chgat(frame->col_width-1, A_REVERSE, 0, NULL);
 
-  struct cursor cursor = frame->cursor; // alias the cursor
-
-  do {
-
-    move(cursor.row, cursor.col); // (row, col)
-    chgat(frame->col_width-1, A_REVERSE, 0, NULL);
-
-    refresh();    // render
-    ch = getch(); // block on input
-
-    chgat(frame->col_width-1, A_NORMAL, 0, NULL);
-
-    int frame_col = cursor.col / frame->col_width;
-
-    // TODO: create parse for this routine
-    // Parse input
-    switch (ch) {
-
-      case 'j': // down
-        if (cursor.row < frame->nrows + data->headers - 1) 
-          cursor.row++;
-        else if (data->shift_row(data, frame, 1, data->args))
-          Frame_print(frame);
-        break;
-
-      case 'k': // up
-        if (cursor.row > 0) cursor.row--;
-        else if (data->inframe.first_row > 0) {
-          data->shift_row(data, frame, -1, data->args);
-          Frame_print(frame);
-        }
-        break;
-
-      case 'h': // left
-        if (frame_col > 0) 
-          cursor.col -= frame->col_width;
-        else if (data->inframe.first_col > 0) {
-          data->shift_col(data, frame, -1, data->args);
-          Frame_print(frame);
-        }
-        break;
-
-      case 'l': // right
-        if (frame_col < frame->ncols-1) 
-          cursor.col += frame->col_width;
-        else if (data->inframe.last_col < data->ncols-1) {
-          data->shift_col(data, frame, 1, data->args);
-          Frame_print(frame);
-        }
-        break;
-
-      case 'q':
-        done = 0;
-        break;
-    }
-  } while (done);
+  // TODO: error checking?
+  yyparse();
 
   endwin();
 
   data->close(data->args);
+
+  free(data);
+  free(frame);
 
 }

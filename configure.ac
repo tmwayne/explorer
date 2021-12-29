@@ -19,6 +19,8 @@ AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_YACC
+AC_PROG_LEX([noyywrap])
 
 # Checks for libraries.
 AC_SEARCH_LIBS([dlopen], [dl])
@@ -39,6 +41,7 @@ AC_CHECK_FUNCS([])
 AC_CONFIG_FILES([
   Makefile
   common/Makefile
+  input-parser/Makefile
   include/Makefile
   src/Makefile
   test/Makefile])

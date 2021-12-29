@@ -11,6 +11,8 @@
 #include "deque.h"
 #include "frame.h"
 
+#define LINE_LEN 8192
+
 #define GET_TOK_R(line, delim, saveptr) \
   (get_tok_r( *saveptr ? NULL : line, delim, saveptr))
 
@@ -94,7 +96,7 @@ int file_load(Data_T data, Frame_T frame, void *args) {
   FILE *fd = ((file_args) args)->fd;
   char delim = ((file_args) args)->delim;
 
-  char *line = CALLOC(256, sizeof(char));
+  char *line = CALLOC(LINE_LEN, sizeof(char));
   char *word = NULL, *saveptr = NULL;
   Deque_T col = NULL;
 
@@ -150,7 +152,7 @@ int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
   FILE *fd = ((file_args) args)->fd;
   char delim = ((file_args) args)->delim;
 
-  char *line = CALLOC(256, sizeof(char));
+  char *line = CALLOC(LINE_LEN, sizeof(char));
   char *word = NULL, *saveptr = NULL;
   
   void *(*pop)(Deque_T deque);
@@ -229,7 +231,7 @@ int file_shift_row(Data_T data, Frame_T frame, int n, void *args) {
   FILE *fd = ((file_args) args)->fd;
   char delim = ((file_args) args)->delim;
 
-  char *line = CALLOC(256, sizeof(char));
+  char *line = CALLOC(LINE_LEN, sizeof(char));
   char *word = NULL, *saveptr = NULL;
   
   void *(*pop)(Deque_T deque);

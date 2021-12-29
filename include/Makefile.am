@@ -1,4 +1,5 @@
-noinst_HEADERS = deque.h \
+noinst_HEADERS = argparse.h \
+	deque.h \
+	preview.h \
 	frame.h \
-	argparse.h \
 	minunit.h
