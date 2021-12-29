@@ -7,7 +7,6 @@
 //
 
 #include <argp.h>
-#include <dict.h> // dict_T, dict_set
 
 const char *argp_program_version = "Preview\n";
 const char *argp_program_bug_address = "<tylerwayne3@gmail.com>";

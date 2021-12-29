@@ -1,5 +1,8 @@
 noinst_HEADERS = argparse.h \
+	cstrings.h \
 	deque.h \
-	preview.h \
+	error.h \
 	frame.h \
-	minunit.h
+	mem.h \
+	minunit.h \
+	preview.h

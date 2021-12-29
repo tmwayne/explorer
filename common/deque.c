@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <error.h>
-#include <mem.h>
+#include "error.h"
+#include "mem.h"
 #include "deque.h"
 
 #define D Deque_T
