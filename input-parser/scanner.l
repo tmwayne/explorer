@@ -13,6 +13,7 @@
 %{
 #include <ncurses.h>
 #include "parser.h"
+// #include "y.tab.h"
 
 #define YY_INPUT(buf, result, max_size) { \
   int c = getch(); \
