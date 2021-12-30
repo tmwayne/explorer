@@ -11,6 +11,7 @@
 #include <ncurses.h>
 #include "argparse.h" // arguments, argp_parse
 #include "preview.h"
+#include "errorcodes.h"
 
 void print_char_node(void **x, void *cl) {
 
@@ -57,7 +58,8 @@ int main(int argc, char **argv) {
     arguments.headers     // headers
   );
 
-  data = Data_init(
+  // data = Data_file_init(
+  data = Data_mmap_init(
     arguments.path,       // path
     arguments.delim,      // delim
     arguments.headers     // headers
@@ -84,7 +86,8 @@ int main(int argc, char **argv) {
 
   data->close(data->args);
 
-  Data_free(&data);
+  // Data_file_free(&data);
+  Data_mmap_free(&data);
   Frame_free(&frame);
 
 }
