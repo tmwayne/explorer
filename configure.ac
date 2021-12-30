@@ -14,7 +14,7 @@ LT_PREREQ([2.2.])
 LT_INIT([dlopen])
 
 AC_CONFIG_MACRO_DIRS([m4])
-AC_CONFIG_SRCDIR([src/preview.c])
+AC_CONFIG_SRCDIR([src/preview/preview.c])
 AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
@@ -37,10 +37,11 @@ AC_CHECK_FUNCS([])
 
 AC_CONFIG_FILES([
   Makefile
-  common/Makefile
-  input-parser/Makefile
   include/Makefile
   src/Makefile
+  src/common/Makefile
+  src/input-parser/Makefile
+  src/preview/Makefile
   test/Makefile])
 
 AC_OUTPUT

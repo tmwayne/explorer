@@ -37,6 +37,15 @@ Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 
 }
 
+void Frame_free(Frame_T *frame) {
+  
+  // TODO: free frame->data
+  // TODO: free frame->headers if exists
+  // TODO: free frame
+  // TODO: set frame to NULL
+  
+}
+
 int Frame_print(Frame_T frame) {
 
   // on when to use erase() vs clear()
@@ -77,7 +86,7 @@ typedef struct file_args {
   FILE *fd;
 } *file_args;
 
-int file_open(void *args) {
+int data_open(void *args) {
 
   file_args _args = args;
 
@@ -91,7 +100,7 @@ int file_open(void *args) {
 
 }
 
-int file_load(Data_T data, Frame_T frame, void *args) {
+int data_load(Data_T data, Frame_T frame, void *args) {
 
   FILE *fd = ((file_args) args)->fd;
   char delim = ((file_args) args)->delim;
@@ -147,7 +156,7 @@ int file_load(Data_T data, Frame_T frame, void *args) {
 
 }
 
-int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
+int shift_col(Data_T data, Frame_T frame, int n, void *args) {
 
   FILE *fd = ((file_args) args)->fd;
   char delim = ((file_args) args)->delim;
@@ -173,7 +182,8 @@ int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
   } else return 0;
 
     // 1. Free values in first column
-  Deque_map(Deque_get(frame->data, pop_ind), free_char_node, NULL);
+  // TODO: this is causing pointer deference issues
+  // Deque_map(Deque_get(frame->data, pop_ind), free_char_node, NULL);
   Deque_T col = pop(frame->data);
   Deque_free(&col);
 
@@ -226,7 +236,7 @@ int file_shift_col(Data_T data, Frame_T frame, int n, void *args) {
 
 }
 
-int file_shift_row(Data_T data, Frame_T frame, int n, void *args) {
+int shift_row(Data_T data, Frame_T frame, int n, void *args) {
 
   FILE *fd = ((file_args) args)->fd;
   char delim = ((file_args) args)->delim;
@@ -283,7 +293,7 @@ int file_shift_row(Data_T data, Frame_T frame, int n, void *args) {
 
 }
 
-int file_close(void *args) {
+int data_close(void *args) {
 
   FILE *fd = ((file_args) args)->fd;
 
@@ -295,17 +305,17 @@ int file_close(void *args) {
 
 }
 
-Data_T Data_file_init(char *path, char delim, int headers) {
+Data_T Data_init(char *path, char delim, int headers) {
 
   Data_T data;
   NEW0(data);
 
   data->headers = headers ? 1 : 0; // any non-zero interpreted as 1
-  data->open = file_open;
-  data->load = file_load;
-  data->shift_col = file_shift_col;
-  data->shift_row = file_shift_row;;
-  data->close = file_close;
+  data->open = data_open;
+  data->load = data_load;
+  data->shift_col = shift_col;
+  data->shift_row = shift_row;;
+  data->close = data_close;
 
   file_args args;
   NEW0(args);
@@ -315,5 +325,13 @@ Data_T Data_file_init(char *path, char delim, int headers) {
   data->args = args;
 
   return data;
+
+}
+
+void Data_free(Data_T *data) {
+
+  // TODO: free data->args
+  // TODO: free data
+  // TODO: set data to NULL
 
 }

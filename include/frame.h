@@ -13,18 +13,16 @@
 
 #include <ncurses.h>
 
-struct cursor {
-  int row;
-  int col;
-};
-
 typedef struct Frame_T {
   int col_width;
   int max_cols;
   int max_rows;
   int ncols;
   int nrows;
-  struct cursor cursor;
+  struct cursor {
+    int row;
+    int col;
+  } cursor;
   Deque_T headers;
   Deque_T data;
 } *Frame_T;
@@ -47,8 +45,10 @@ typedef struct Data_T {
 } *Data_T;
 
 extern Frame_T  Frame_init(int col_width, int max_cols, int max_rows, int headers);
+extern void     Frame_free(Frame_T *frame);
 extern int      Frame_print(Frame_T frame);
 
-extern Data_T Data_file_init(char *path, char delim, int headers);
+extern Data_T Data_init(char *path, char delim, int headers);
+extern void   Data_free(Data_T *data);
 
 #endif
