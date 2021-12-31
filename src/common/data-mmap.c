@@ -348,6 +348,8 @@ static int data_close(void *args) {
 
 Data_T Data_mmap_init(char *path, char delim, int headers) {
 
+  // TODO: error check argument values
+
   Data_T data;
   NEW0(data);
 
@@ -367,15 +369,17 @@ Data_T Data_mmap_init(char *path, char delim, int headers) {
 
   data->args = args;
 
+  // TODO: if issues, return NULL
   return data;
 
 }
 
 void Data_mmap_free(Data_T *data) {
 
-  assert(data && *data && (*data)->args);
+  assert(data && *data && (*data)->args); 
 
   mmap_args args = (*data)->args;
+  assert(args->row_offsets);
 
   FREE(args->row_offsets);
   FREE(args);
