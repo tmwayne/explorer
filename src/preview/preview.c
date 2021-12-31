@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   if (err) {
     endwin();
     switch (err) {
-      case E_FRM_FILE_ERROR: // falls through to default
+      case E_DTA_FILE_ERROR: // falls through to default
       default:
         fprintf(stderr, "Error opening data\n");
     }
@@ -81,10 +81,10 @@ int main(int argc, char **argv) {
   if (err) {
     endwin();
     switch (err) {
-      case E_FRM_PARSE_ERROR:
+      case E_DTA_PARSE_ERROR:
         fprintf(stderr, "Error parsing file\n");
         break;
-      case E_FRM_MISSING_FIELD:
+      case E_DTA_MISSING_FIELD:
         fprintf(stderr, "Row has incorrect number of fields\n");
         break;
       default:

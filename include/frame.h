@@ -12,6 +12,7 @@
 #define FRAME_INCLUDED
 
 #include <ncurses.h>
+#include "deque.h" // Deque_T
 
 typedef struct Frame_T {
   int col_width;

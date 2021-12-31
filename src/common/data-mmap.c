@@ -86,13 +86,13 @@ static int data_open(void *args) {
   mmap_args _args = args;
 
   int fd = open(_args->path, O_RDONLY);
-  if (fd < 0) return E_FRM_FILE_ERROR;
+  if (fd < 0) return E_DTA_FILE_ERROR;
 
   struct stat statbuf;
-  if (fstat(fd, &statbuf) < 0) return E_FRM_FILE_ERROR;
+  if (fstat(fd, &statbuf) < 0) return E_DTA_FILE_ERROR;
 
   long PAGESIZE = sysconf(_SC_PAGESIZE);
-  if (statbuf.st_size % PAGESIZE == 0) return E_FRM_FILE_ERROR;
+  if (statbuf.st_size % PAGESIZE == 0) return E_DTA_FILE_ERROR;
 
   char *ptr = mmap(
     NULL,                   // address
@@ -106,12 +106,12 @@ static int data_open(void *args) {
   // TODO: how should this interplay with the next check?
   close(fd);
 
-  if (ptr == MAP_FAILED) return E_FRM_FILE_ERROR;
+  if (ptr == MAP_FAILED) return E_DTA_FILE_ERROR;
 
   _args->st_size = statbuf.st_size;
   _args->ptr = ptr;
 
-  return E_FRM_OK;
+  return E_OK;
 
 }
 
@@ -134,7 +134,7 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
   // if headers then set those
   while (1) {
     ret = get_tok_r(&tok, &nbytes, ptr, delim, &saveptr, st_size);
-    if (ret > 1) return E_FRM_PARSE_ERROR; // EOL
+    if (ret > 1) return E_DTA_PARSE_ERROR; // EOL
     total_bytes += nbytes;
 
     if (icol < frame->max_cols) {
@@ -165,7 +165,7 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
   irow++, icol = 0;
   while (irow < frame->max_rows) {
     ret = get_tok_r(&tok, &nbytes, ptr, delim, &saveptr, st_size);
-    if (ret > 2) return E_FRM_PARSE_ERROR; // EOL, EOF are okay
+    if (ret > 2) return E_DTA_PARSE_ERROR; // EOL, EOF are okay
     if (ret == TOK_EOF) break;
     total_bytes += nbytes;
 
@@ -176,7 +176,7 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
 
     if (ret == TOK_EOL) {
       // TODO: how can we return row number of error?
-      if (icol != data->ncols-1) return E_FRM_MISSING_FIELD;
+      if (icol != data->ncols-1) return E_DTA_MISSING_FIELD;
       row_offsets[irow+1] = total_bytes;
       irow++;
       icol = 0;
@@ -190,7 +190,7 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
   data->inframe.last_row = frame->nrows - 1;
   data->nrows = frame->nrows; 
 
-  return E_FRM_OK;
+  return E_OK;
 
 }
 
@@ -214,9 +214,9 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
     new_col_ind = data->inframe.first_col - 1;
     pop = Deque_remhi;
     push = Deque_addlo;
-  } else return E_FRM_INVALID_INPUT;
+  } else return E_DTA_INVALID_INPUT;
 
-  if (new_col_ind >= data->ncols) return E_FRM_COL_OOB;
+  if (new_col_ind >= data->ncols) return E_DTA_COL_OOB;
 
     // 1. Free values in first column
   Deque_T col = pop(frame->data);
@@ -238,7 +238,7 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
 
     while (1) {
       ret = get_tok_r(&tok, &nbytes, start, delim, &saveptr, len);
-      if (ret != TOK_OK) return E_FRM_PARSE_ERROR;
+      if (ret != TOK_OK) return E_DTA_PARSE_ERROR;
       if (icol++ == new_col_ind) {
         push(frame->headers, tok);
         break;
@@ -256,7 +256,7 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
   while (1) {
     if (irow > data->inframe.last_row) break;
     ret = get_tok_r(&tok, &nbytes, start, delim, &saveptr, len);
-    if (ret != TOK_OK) return E_FRM_PARSE_ERROR;
+    if (ret != TOK_OK) return E_DTA_PARSE_ERROR;
     if (icol == new_col_ind) {
       Deque_addhi(col, tok);
       icol = 0, irow++;
@@ -271,7 +271,7 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
   data->inframe.first_col += n;
   data->inframe.last_col += n;
 
-  return E_FRM_OK;
+  return E_OK;
 
 }
 
@@ -296,7 +296,7 @@ static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
     new_row_ind = data->inframe.first_row - 1;
     pop = Deque_remhi;
     push = Deque_addlo;
-  } else return E_FRM_INVALID_INPUT;
+  } else return E_DTA_INVALID_INPUT;
 
   // Fast-forward to the correct row
   int icol = 0, i = 0, ret;
@@ -306,12 +306,12 @@ static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
   // TODO: check that offset is available
   
   int len = st_size - row_offsets[new_row_ind];
-  if (len <= 0) return E_FRM_ROW_OOB;
+  if (len <= 0) return E_DTA_ROW_OOB;
 
   while (1) {
     ret = get_tok_r(&tok, &nbytes, start, delim, &saveptr, len);
     total_bytes += nbytes;
-    if (ret > 1) return E_FRM_PARSE_ERROR;
+    if (ret > 1) return E_DTA_PARSE_ERROR;
     if (icol >= data->inframe.first_col && icol <= data->inframe.last_col) {
       Deque_T col = Deque_get(frame->data, i);
       pop(col);
@@ -330,7 +330,7 @@ static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
   data->inframe.first_row += n;
   data->inframe.last_row += n;
   
-  return E_FRM_OK;
+  return E_OK;
 
 }
 
@@ -340,9 +340,9 @@ static int data_close(void *args) {
   ssize_t st_size = ((mmap_args) args)->st_size;
 
   if (munmap(ptr, st_size) != 0)
-    return E_FRM_RESOURCE_ERROR;
+    return E_DTA_RESOURCE_ERROR;
   
-  return E_FRM_OK;
+  return E_OK;
 
 }
 

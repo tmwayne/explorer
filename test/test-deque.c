@@ -7,7 +7,7 @@
 //
 
 #include <stdio.h>
-#include <error.h>
+#include "error.h"
 #include "minunit.h"
 #include "deque.h"
 
@@ -29,35 +29,35 @@ void  Deque_map    (D deque, void apply(void **x, void *cl), void *cl);
 
 char *test_Deque_new_valid() {
   Deque_T deque = Deque_new();
-  mu_assert("error: Deque_new returned NULL", deque);
+  mu_assert("Deque_new returned NULL", deque);
 }
 
 char *test_Deque_new_length_0() {
   Deque_T deque = Deque_new();
-  mu_assert("error: length of Deque_new not 0", Deque_length(deque) == 0);
+  mu_assert("Length of Deque_new not 0", Deque_length(deque) == 0);
 }
 
 char *test_Deque_free_valid() {
   Deque_T deque = Deque_new();
   Deque_free(&deque);
-  mu_assert("error: deque wasn't NULL after Deque_free", deque == NULL);
+  mu_assert("Deque wasn't NULL after Deque_free", deque == NULL);
 }
 
 char *test_Deque_free_throws_NULL_arg() {
-  int pass = 0;
+  unsigned char pass = 0;
   TRY Deque_free(NULL);
   EXCEPT (Assert_Failed) pass = 1;
   END_TRY;
-  mu_assert("error: Deque_free didn't throw when given NULL argument", pass);
+  mu_assert("Deque_free didn't throw when given NULL argument", pass);
 }
 
 char *test_Deque_free_throws_NULL_deque() {
-  int pass = 0;
+  unsigned char pass = 0;
   Deque_T deque = NULL;
   TRY Deque_free(&deque);
   EXCEPT (Assert_Failed) pass = 1;
   END_TRY;
-  mu_assert("error: Deque_free didn't throw when given NULL deque", pass);
+  mu_assert("Deque_free didn't throw when given NULL deque", pass);
 }
 
 char* run_all_tests() {

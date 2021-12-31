@@ -11,6 +11,7 @@
 %{
 #include <ncurses.h>
 #include "preview.h"
+#include "errorcodes.h"
 
 #define UNHIGHLIGHT() chgat(frame->col_width-1, A_NORMAL, 0, NULL)
 #define MOVE_HIGHLIGHT_REFRESH() do { \
@@ -73,7 +74,8 @@ cmd:
                           UNHIGHLIGHT();
                           if (frame->cursor.row < frame->nrows - 1) 
                             frame->cursor.row++;
-                          else if ((data->shift_row(data, frame, 1, data->args))==0)
+                          else if (
+                            (data->shift_row(data, frame, 1, data->args))==E_OK)
                             Frame_print(frame);
                           MOVE_HIGHLIGHT_REFRESH();
                         }

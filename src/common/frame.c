@@ -24,6 +24,8 @@ Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 
   // TODO: need to put headers and data with the data to be
   // able to properly free it
+  
+  // TODO: add error checking to these values
 
   frame->col_width = col_width;
   frame->max_cols = max_cols;
@@ -39,9 +41,11 @@ void Frame_free(Frame_T *frame) {
 
   assert(frame && *frame && (*frame)->data);
 
-  Deque_free(&(*frame)->headers);
+  if ((*frame)->headers) Deque_free(&(*frame)->headers);
 
-  Deque_map((*frame)->data, free_deque_node, NULL);
+  if (Deque_length((*frame)->data) > 0)
+    Deque_map((*frame)->data, free_deque_node, NULL);
+
   Deque_free(&(*frame)->data);
 
   FREE(*frame);
@@ -49,6 +53,12 @@ void Frame_free(Frame_T *frame) {
 }
 
 int Frame_print(Frame_T frame) {
+
+  assert(frame && Deque_length(frame->data) > 0);
+
+  // TODO: handle this error with error code or in data_load
+  assert(!frame->headers || 
+    Deque_length(frame->headers) == Deque_length(frame->data));
 
   // on when to use erase() vs clear()
   // lists.gnu.org/archive/html/bug-ncurses/2014-01/msg00007.html
@@ -79,7 +89,7 @@ int Frame_print(Frame_T frame) {
     }
   }
 
-  return E_FRM_OK;
+  return E_OK;
 
 }
 
