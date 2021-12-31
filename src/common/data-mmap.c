@@ -373,8 +373,12 @@ Data_T Data_mmap_init(char *path, char delim, int headers) {
 
 void Data_mmap_free(Data_T *data) {
 
-  // TODO: free data->args
-  // TODO: free data
-  // TODO: set data to NULL
+  assert(data && *data && (*data)->args);
+
+  mmap_args args = (*data)->args;
+
+  FREE(args->row_offsets);
+  FREE(args);
+  FREE(*data);
 
 }

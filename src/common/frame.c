@@ -11,10 +11,19 @@
 #include "frame.h"
 #include "errorcodes.h"
 
+static void free_deque_node(void **x, void *cl) {
+  
+  Deque_free((Deque_T *) x);
+
+}
+
 Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 
   Frame_T frame;
   NEW0(frame);
+
+  // TODO: need to put headers and data with the data to be
+  // able to properly free it
 
   frame->col_width = col_width;
   frame->max_cols = max_cols;
@@ -27,11 +36,15 @@ Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 }
 
 void Frame_free(Frame_T *frame) {
-  
-  // TODO: free frame->data
-  // TODO: free frame->headers if exists
-  // TODO: free frame
-  // TODO: set frame to NULL
+
+  assert(frame && *frame && (*frame)->data);
+
+  Deque_free(&(*frame)->headers);
+
+  Deque_map((*frame)->data, free_deque_node, NULL);
+  Deque_free(&(*frame)->data);
+
+  FREE(*frame);
   
 }
 
