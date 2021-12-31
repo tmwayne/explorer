@@ -22,7 +22,6 @@ int yylex();
 int yyparse();
 
 // Program data
-extern int done;
 extern Frame_T frame;
 extern Data_T data;
 

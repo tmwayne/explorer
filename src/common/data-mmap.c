@@ -33,12 +33,13 @@ typedef struct mmap_args {
   char delim;
   char *ptr;
   ssize_t st_size;
-  // int row_offsets[MAX_ROWS]; // Currently handles up to ~4GB
   int *row_offsets; // Currently handles up to ~4GB
 } *mmap_args;
 
 static int get_tok_r(char **tok, int *nbytes, char *str, const char delim, 
   char **saveptr, ssize_t len) {
+
+  // TODO: check for trailing whitespace in file
 
   if (*saveptr == NULL) *saveptr = str;
 
@@ -47,12 +48,11 @@ static int get_tok_r(char **tok, int *nbytes, char *str, const char delim,
   int in_quote = 0;
 
   *nbytes = 1;
-
   for ( int i=0; ; i++, (*nbytes)++) {
 
     switch(field[i]) {
       case '\0':
-        if (*saveptr+i > str+len) return TOK_EOF;
+        if (*saveptr+i >= str+len) return TOK_EOF;
         *saveptr += (i+1);
         *tok = field;
         return TOK_OK;
@@ -86,10 +86,10 @@ static int data_open(void *args) {
   mmap_args _args = args;
 
   int fd = open(_args->path, O_RDONLY);
-  if (fd < 0) return E_FRM_FILE_NOT_FOUND;
+  if (fd < 0) return E_FRM_FILE_ERROR;
 
   struct stat statbuf;
-  if (fstat(fd, &statbuf) < 0) return E_FRM_FILE_NOT_FOUND;
+  if (fstat(fd, &statbuf) < 0) return E_FRM_FILE_ERROR;
 
   long PAGESIZE = sysconf(_SC_PAGESIZE);
   if (statbuf.st_size % PAGESIZE == 0) return E_FRM_FILE_ERROR;
@@ -134,10 +134,11 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
   int irow, icol = 0; //count_cols = 1;
 
   // TODO: fix assumption that there are headers
+  // TODO: check that each row has the same number of columns
 
   while (1) {
     ret = get_tok_r(&tok, &nbytes, ptr, delim, &saveptr, st_size);
-    if (ret > 1) return E_FRM_PARSE_ERROR; 
+    if (ret > 1) return E_FRM_PARSE_ERROR; // EOL
     total_bytes += nbytes;
 
     if (icol < frame->max_cols) {
@@ -151,14 +152,16 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
     
     if (ret == TOK_EOL) {
       row_offsets[1] = total_bytes;
+      frame->nrows++;
       break;
     }
   }
 
-  irow = 0, icol = 0;
+  irow = 1, icol = 0;
   while (irow < frame->max_rows) {
     ret = get_tok_r(&tok, &nbytes, ptr, delim, &saveptr, st_size);
-    if (ret > 1) return E_FRM_PARSE_ERROR;
+    if (ret > 2) return E_FRM_PARSE_ERROR; // EOL, EOF are okay
+    if (ret == TOK_EOF) break;
     total_bytes += nbytes;
 
     if (icol < frame->max_cols) {
@@ -168,16 +171,18 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
     }
 
     if (ret == TOK_EOL) {
-      row_offsets[irow+2] = total_bytes;
+      row_offsets[irow+1] = total_bytes;
       irow++;
       icol = 0;
       frame->nrows++;
     }
   }
 
+  // Assume there is a always a header, for consistent indexing
+  data->inframe.first_row = 1; 
   data->inframe.last_col = frame->ncols - 1;
   data->inframe.last_row = frame->nrows - 1;
-  data->nrows = frame->nrows + 1; // this assumes a header
+  data->nrows = frame->nrows; 
 
   return E_FRM_OK;
 
@@ -204,6 +209,8 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
     pop = Deque_remhi;
     push = Deque_addlo;
   } else return E_FRM_INVALID_INPUT;
+
+  if (new_col_ind >= data->ncols) return E_FRM_COL_OOB;
 
     // 1. Free values in first column
   Deque_T col = pop(frame->data);
@@ -238,8 +245,8 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
   icol = 0;
   saveptr = NULL;
   irow = data->inframe.first_row;
-  start = ptr + row_offsets[irow+1];
-  len = row_offsets[irow+2] - row_offsets[irow+1]; 
+  start = ptr + row_offsets[irow];
+  len = row_offsets[irow+1] - row_offsets[irow]; 
   // Skip the header row
  
   while (1) {
@@ -250,8 +257,8 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
       Deque_addhi(col, tok);
       icol = 0, irow++;
       saveptr = NULL;
-      start = ptr + row_offsets[irow+1];
-      len = row_offsets[irow+2] - row_offsets[irow+1];
+      start = ptr + row_offsets[irow];
+      len = row_offsets[irow+1] - row_offsets[irow];
       continue;
     }
     icol++;
@@ -294,12 +301,12 @@ static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
   // Fast-forward to the correct row
   int icol = 0, i = 0, ret;
   int nbytes, total_bytes = row_offsets[data->nrows];
-  char *start = ptr + row_offsets[new_row_ind+1]; // TODO: this assumes header
+  char *start = ptr + row_offsets[new_row_ind]; // TODO: this assumes header
 
   // TODO: check that offset is available
   
-  int len = st_size - row_offsets[new_row_ind+1];
-  if (len <= 0) return E_FRM_LAST_ROW;
+  int len = st_size - row_offsets[new_row_ind];
+  if (len <= 0) return E_FRM_ROW_OOB;
 
   while (1) {
     ret = get_tok_r(&tok, &nbytes, start, delim, &saveptr, len);
@@ -315,8 +322,8 @@ static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
     icol++;
   }
 
-  if (new_row_ind+2 > data->nrows) {
-    row_offsets[new_row_ind+2] = total_bytes;
+  if (new_row_ind+1 > data->nrows) {
+    row_offsets[new_row_ind+1] = total_bytes;
     data->nrows++;
   }
 

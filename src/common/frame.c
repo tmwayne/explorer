@@ -57,15 +57,16 @@ int Frame_print(Frame_T frame) {
     // Print data
     Deque_T col = Deque_get(frame->data, icol);
 
-    for (int irow=0, n=0; irow<frame->nrows; irow++, n++) {
+    // TODO: throw error if we can't get data
+
+    for (int irow=0, n=0; irow<frame->nrows-1; irow++, n++) {
       mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
       if (icol < frame->ncols-1) // print for all but the last column
         mvaddstr(irow + headers, (icol+1)*frame->col_width-1, "|");
     }
   }
 
-  // TODO: return error code
-  return 1;
+  return E_FRM_OK;
 
 }
 

@@ -34,7 +34,7 @@
 
 list:
   | list cmd
-  | OTHER               { done = 0; return 0; }
+  | OTHER               { return 0; }
   ;
 
 cmd:
@@ -62,7 +62,7 @@ cmd:
                           UNHIGHLIGHT();
                           if (frame->cursor.row > 0) 
                             frame->cursor.row--;
-                          else if (data->inframe.first_row > 0) {
+                          else if (data->inframe.first_row > 1) {
                             data->shift_row(data, frame, -1, data->args);
                             Frame_print(frame);
                           }
@@ -71,7 +71,7 @@ cmd:
 
   | DOWN                {
                           UNHIGHLIGHT();
-                          if (frame->cursor.row < frame->nrows + data->headers - 1) 
+                          if (frame->cursor.row < frame->nrows - 1) 
                             frame->cursor.row++;
                           else if ((data->shift_row(data, frame, 1, data->args))==0)
                             Frame_print(frame);

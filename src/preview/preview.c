@@ -28,7 +28,6 @@ void yyerror(char *s) {
 // TODO: make parser reentrant to avoid global variables
 Frame_T frame;
 Data_T data;
-int done;
 
 int main(int argc, char **argv) {
 
@@ -67,16 +66,20 @@ int main(int argc, char **argv) {
     arguments.headers     // headers
   );
 
+  if (data->open(data->args)) {
+    endwin();
+    fprintf(stderr, "Error opening data\n");
+    exit(EXIT_FAILURE);
+  }
 
-  // TODO: check for error if unable to open
-  data->open(data->args);
-  data->load(data, frame, data->args);
+  if(data->load(data, frame, data->args) ) {
+    endwin();
+    fprintf(stderr, "Error loading data\n");
+    exit(EXIT_FAILURE);
+  }
 
   // data->shift_col(data, frame, 1, data->args);
-  // data->shift_col(data, frame, -1, data->args);
   // data->shift_row(data, frame, 1, data->args);
-
-  done = 1;
 
   Frame_print(frame);
   // TODO: move these lines to Frame_print
@@ -88,7 +91,10 @@ int main(int argc, char **argv) {
 
   endwin();
 
-  data->close(data->args);
+  if (data->close(data->args)) {
+    fprintf(stderr, "Error closing data\n");
+    exit(EXIT_FAILURE);
+  }
 
   // Data_file_free(&data);
   Data_mmap_free(&data);
