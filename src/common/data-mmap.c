@@ -298,6 +298,8 @@ static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
     push = Deque_addlo;
   } else return E_DTA_INVALID_INPUT;
 
+  if (new_row_ind+1 == MAX_ROWS) return E_DTA_MAX_ROWS;
+
   // Fast-forward to the correct row
   int icol = 0, i = 0, ret;
   int nbytes, total_bytes = row_offsets[data->nrows];

@@ -52,42 +52,56 @@ void Frame_free(Frame_T *frame) {
   
 }
 
-int Frame_print(Frame_T frame) {
+int Frame_print(Frame_T frame, unsigned char what) {
 
   assert(frame && Deque_length(frame->data) > 0);
-
+  
   // TODO: handle this error with error code or in data_load
   assert(!frame->headers || 
     Deque_length(frame->headers) == Deque_length(frame->data));
 
-  // on when to use erase() vs clear()
-  // lists.gnu.org/archive/html/bug-ncurses/2014-01/msg00007.html
-  erase();
+  // TODO: check somehow to see what has changed
+  
+  if (what & O_FRM_DATA) {
 
-  int headers = frame->headers ? 1 : 0;
+    // on when to use erase() vs clear()
+    // lists.gnu.org/archive/html/bug-ncurses/2014-01/msg00007.html
+    erase();
 
-  for (int icol=0; icol<frame->ncols; icol++) {
-    int text_start = icol*frame->col_width+1;
-    int text_width = frame->col_width-3;
+    int headers = frame->headers ? 1 : 0;
 
-    // Print headers
-    if (frame->headers) {
-      mvaddnstr(0, text_start, Deque_get(frame->headers, icol), text_width);
-      if (icol < frame->ncols-1)
-        mvaddstr(0, (icol+1)*frame->col_width-1, "|");
+    for (int icol=0; icol<frame->ncols; icol++) {
+      int text_start = icol*frame->col_width+1;
+      int text_width = frame->col_width-3;
+
+      // Print headers
+      if (frame->headers) {
+        mvaddnstr(0, text_start, Deque_get(frame->headers, icol), text_width);
+        if (icol < frame->ncols-1)
+          mvaddstr(0, (icol+1)*frame->col_width-1, "|");
+      }
+      
+      // Print data
+      Deque_T col = Deque_get(frame->data, icol);
+
+      // TODO: throw error if we can't get data
+
+      for (int irow=0, n=0; irow<frame->nrows-1; irow++, n++) {
+        mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
+        if (icol < frame->ncols-1) // print for all but the last column
+          mvaddstr(irow + headers, (icol+1)*frame->col_width-1, "|");
+      }
     }
-    
-    // Print data
-    Deque_T col = Deque_get(frame->data, icol);
 
-    // TODO: throw error if we can't get data
+  } 
 
-    for (int irow=0, n=0; irow<frame->nrows-1; irow++, n++) {
-      mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
-      if (icol < frame->ncols-1) // print for all but the last column
-        mvaddstr(irow + headers, (icol+1)*frame->col_width-1, "|");
-    }
+  if (what & O_FRM_CURS) {
+    chgat(frame->col_width-1, A_NORMAL, 0, NULL);
   }
+
+  move(frame->cursor.row, frame->cursor.col);
+  chgat(frame->col_width-1, A_REVERSE, 0, NULL);
+  refresh();
 
   return E_OK;
 

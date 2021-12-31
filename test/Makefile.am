@@ -1,4 +1,4 @@
-TESTS = test_deque test_frame test_data_mmap
+TESTS = $(check_PROGRAMS)
 
 check_PROGRAMS = test_deque test_frame test_data_mmap
 

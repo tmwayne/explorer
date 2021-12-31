@@ -14,6 +14,9 @@
 #include <ncurses.h>
 #include "deque.h" // Deque_T
 
+#define O_FRM_CURS 1
+#define O_FRM_DATA 2
+
 typedef struct Frame_T {
   int col_width;
   int max_cols;
@@ -48,7 +51,7 @@ typedef struct Data_T {
 
 extern Frame_T  Frame_init(int col_width, int max_cols, int max_rows, int headers);
 extern void     Frame_free(Frame_T *frame);
-extern int      Frame_print(Frame_T frame);
+extern int      Frame_print(Frame_T frame, unsigned char what);
 
 extern Data_T Data_file_init(char *path, char delim, int headers);
 extern void   Data_file_free(Data_T *data);

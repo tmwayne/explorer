@@ -64,9 +64,7 @@ int main(int argc, char **argv) {
     arguments.headers     // headers
   );
 
-  int err;
-
-  err = data->open(data->args);
+  int err = data->open(data->args);
   if (err) {
     endwin();
     switch (err) {
@@ -96,12 +94,8 @@ int main(int argc, char **argv) {
   // data->shift_col(data, frame, 1, data->args);
   // data->shift_row(data, frame, 1, data->args);
 
-  Frame_print(frame);
-  // TODO: move these lines to Frame_print
-  move(frame->cursor.row, frame->cursor.col); // (row, col)
-  chgat(frame->col_width-1, A_REVERSE, 0, NULL);
+  Frame_print(frame, O_FRM_DATA | O_FRM_CURS);
 
-  // TODO: error checking?
   err = yyparse();
   if (err) {
     endwin();
