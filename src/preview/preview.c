@@ -54,7 +54,9 @@ int main(int argc, char **argv) {
   frame = Frame_init(
     col_width,            // col_width
     max_cols,             // max_cols
+    // 2,
     max_rows-1,           // max_rows
+    // 5,
     arguments.headers     // headers
   );
 
@@ -70,7 +72,9 @@ int main(int argc, char **argv) {
   data->open(data->args);
   data->load(data, frame, data->args);
 
-  // data->shift(data, frame, 1, 0, data->args);
+  // data->shift_col(data, frame, 1, data->args);
+  // data->shift_col(data, frame, -1, data->args);
+  // data->shift_row(data, frame, 1, data->args);
 
   done = 1;
 

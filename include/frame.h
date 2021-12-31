@@ -29,6 +29,7 @@ typedef struct Frame_T {
 
 typedef struct Data_T {
   int ncols;
+  int nrows;
   int headers;
   struct inframe {
     int first_row;

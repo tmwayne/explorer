@@ -73,7 +73,7 @@ cmd:
                           UNHIGHLIGHT();
                           if (frame->cursor.row < frame->nrows + data->headers - 1) 
                             frame->cursor.row++;
-                          else if (data->shift_row(data, frame, 1, data->args))
+                          else if ((data->shift_row(data, frame, 1, data->args))==0)
                             Frame_print(frame);
                           MOVE_HIGHLIGHT_REFRESH();
                         }
