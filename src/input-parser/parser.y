@@ -34,7 +34,7 @@
 
 list:
   | list cmd
-  | OTHER               { return 0; }
+  | list OTHER               { return 0; }
   ;
 
 cmd:

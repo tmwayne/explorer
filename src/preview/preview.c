@@ -49,32 +49,47 @@ int main(int argc, char **argv) {
   getmaxyx(stdscr, max_rows, max_cols);
   max_cols /= col_width;
 
+
   // TODO: determine appropriate column width
   frame = Frame_init(
     col_width,            // col_width
     max_cols,             // max_cols
-    // 2,
     max_rows-1,           // max_rows
-    // 5,
     arguments.headers     // headers
   );
 
-  // data = Data_file_init(
   data = Data_mmap_init(
     arguments.path,       // path
     arguments.delim,      // delim
     arguments.headers     // headers
   );
 
-  if (data->open(data->args)) {
+  int err;
+
+  err = data->open(data->args);
+  if (err) {
     endwin();
-    fprintf(stderr, "Error opening data\n");
+    switch (err) {
+      case E_FRM_FILE_ERROR: // falls through to default
+      default:
+        fprintf(stderr, "Error opening data\n");
+    }
     exit(EXIT_FAILURE);
   }
 
-  if(data->load(data, frame, data->args) ) {
+  err = data->load(data, frame, data->args);
+  if (err) {
     endwin();
-    fprintf(stderr, "Error loading data\n");
+    switch (err) {
+      case E_FRM_PARSE_ERROR:
+        fprintf(stderr, "Error parsing file\n");
+        break;
+      case E_FRM_MISSING_FIELD:
+        fprintf(stderr, "Row has incorrect number of fields\n");
+        break;
+      default:
+        fprintf(stderr, "Error loading data\n");
+    }
     exit(EXIT_FAILURE);
   }
 
@@ -87,7 +102,12 @@ int main(int argc, char **argv) {
   chgat(frame->col_width-1, A_REVERSE, 0, NULL);
 
   // TODO: error checking?
-  yyparse();
+  err = yyparse();
+  if (err) {
+    endwin();
+    fprintf(stderr, "Error parsing user input\n");
+    exit(EXIT_FAILURE);
+  }
 
   endwin();
 
@@ -96,7 +116,6 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  // Data_file_free(&data);
   Data_mmap_free(&data);
   Frame_free(&frame);
 

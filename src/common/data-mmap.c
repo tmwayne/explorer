@@ -122,42 +122,47 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
   char delim = ((mmap_args) args)->delim;
   int *row_offsets = ((mmap_args) args)->row_offsets;
 
-  // char *line = CALLOC(LINE_LEN, sizeof(char));
-  // char *word = NULL, *saveptr = NULL;
   Deque_T col = NULL;
 
-  // Initialize data columns, column counts, and headers
   char *saveptr = NULL, *tok = NULL;
   int ret;
 
   int nbytes, total_bytes=0;
-  int irow, icol = 0; //count_cols = 1;
+  int irow = 0, icol = 0;
 
-  // TODO: fix assumption that there are headers
-  // TODO: check that each row has the same number of columns
-
+  // Parse the first row to set up columns,
+  // if headers then set those
   while (1) {
     ret = get_tok_r(&tok, &nbytes, ptr, delim, &saveptr, st_size);
     if (ret > 1) return E_FRM_PARSE_ERROR; // EOL
     total_bytes += nbytes;
 
     if (icol < frame->max_cols) {
-      Deque_addhi(frame->data, Deque_new());
+      col = Deque_new();
+      Deque_addhi(frame->data, col);
       frame->ncols++;
-      Deque_addhi(frame->headers, tok); // TODO: we assume headers here
+      if (data->headers) Deque_addhi(frame->headers, tok); 
+      else Deque_addhi(col, tok);
     }
 
     data->ncols++;
     icol++;
     
     if (ret == TOK_EOL) {
-      row_offsets[1] = total_bytes;
-      frame->nrows++;
+      // Always start data at index 2
+      if(data->headers) {
+        row_offsets[1] = total_bytes;
+        frame->nrows++;
+      } else {
+        row_offsets[2] = total_bytes;
+        frame->nrows += 2;
+        irow++;
+      }
       break;
     }
   }
 
-  irow = 1, icol = 0;
+  irow++, icol = 0;
   while (irow < frame->max_rows) {
     ret = get_tok_r(&tok, &nbytes, ptr, delim, &saveptr, st_size);
     if (ret > 2) return E_FRM_PARSE_ERROR; // EOL, EOF are okay
@@ -167,15 +172,16 @@ static int data_load(Data_T data, Frame_T frame, void *args) {
     if (icol < frame->max_cols) {
       col = Deque_get(frame->data, icol);
       Deque_addhi(col, tok);
-      icol++;
     }
 
     if (ret == TOK_EOL) {
+      // TODO: how can we return row number of error?
+      if (icol != data->ncols-1) return E_FRM_MISSING_FIELD;
       row_offsets[irow+1] = total_bytes;
       irow++;
       icol = 0;
       frame->nrows++;
-    }
+    } else icol++;
   }
 
   // Assume there is a always a header, for consistent indexing
@@ -226,28 +232,26 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
   char *tok = NULL, *saveptr = NULL;
   int len = row_offsets[1]; // length of header row
   char *start = ptr;
-  // if (data->headers) {
 
-  pop(frame->headers);
+  if (data->headers) {
+    pop(frame->headers);
 
-  while (1) {
-    ret = get_tok_r(&tok, &nbytes, start, delim, &saveptr, len);
-    if (ret != TOK_OK) return E_FRM_PARSE_ERROR;
-    if (icol++ == new_col_ind) {
-      push(frame->headers, tok);
-      break;
+    while (1) {
+      ret = get_tok_r(&tok, &nbytes, start, delim, &saveptr, len);
+      if (ret != TOK_OK) return E_FRM_PARSE_ERROR;
+      if (icol++ == new_col_ind) {
+        push(frame->headers, tok);
+        break;
+      }
     }
   }
-  // }
   
-  // TODO: this assumes headers
-  // Fast-forward to correct row
+  // TODO: write a note somewhere that we always assume headers
   icol = 0;
   saveptr = NULL;
   irow = data->inframe.first_row;
   start = ptr + row_offsets[irow];
   len = row_offsets[irow+1] - row_offsets[irow]; 
-  // Skip the header row
  
   while (1) {
     if (irow > data->inframe.last_row) break;
@@ -273,8 +277,6 @@ static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
 
 static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
 
-  // TODO: there might be a bug when scrolling to the end
-
   char *ptr = ((mmap_args) args)->ptr;
   char delim = ((mmap_args) args)->delim;
   int *row_offsets = ((mmap_args) args)->row_offsets;
@@ -296,12 +298,10 @@ static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
     push = Deque_addlo;
   } else return E_FRM_INVALID_INPUT;
 
-  // TODO: remove header assumption
-
   // Fast-forward to the correct row
   int icol = 0, i = 0, ret;
   int nbytes, total_bytes = row_offsets[data->nrows];
-  char *start = ptr + row_offsets[new_row_ind]; // TODO: this assumes header
+  char *start = ptr + row_offsets[new_row_ind]; 
 
   // TODO: check that offset is available
   
