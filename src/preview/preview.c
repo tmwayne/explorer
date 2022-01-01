@@ -13,6 +13,12 @@
 #include "preview.h"
 #include "errorcodes.h"
 
+#define EXIT(msg) do { \
+  endwin(); \
+  fprintf(stderr, "%s\n", (msg)); \
+  exit(EXIT_FAILURE); \
+  } while (0)
+
 void print_char_node(void **x, void *cl) {
 
   printf("%s\n", * (char **) x);
@@ -33,46 +39,41 @@ int main(int argc, char **argv) {
 
   // TODO: setup configparse
 
-  // Command line arguments
+  // Default arguments
   struct arguments arguments;
   arguments.headers = 1;
+  arguments.col_width = 16;
   arguments.delim = '|';
+
+  // Command line arguments
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
  
   initscr();
-  cbreak(); // disable line buffering
-  noecho(); // disable echo for getch
+  cbreak();    // disable line buffering
+  noecho();    // disable echo for getch
   curs_set(0); // hide cursor
 
-  int col_width = 16;
   int max_rows, max_cols;
   getmaxyx(stdscr, max_rows, max_cols);
-  max_cols /= col_width;
+  max_cols /= arguments.col_width;
 
   // TODO: determine appropriate column width
   frame = Frame_init(
-    col_width,            // col_width
+    arguments.col_width,  // col_width
     max_cols,             // max_cols
     max_rows-1,           // max_rows
     arguments.headers     // headers
   );
+  if (!frame) EXIT("Error initializing frame\n");
 
   data = Data_mmap_init(
     arguments.path,       // path
     arguments.delim       // delim
   );
+  if (!data) EXIT("Error initializing data\n");
 
-  // int err = data->open(data->args);
   int err = Data_open(data);
-  if (err) {
-    endwin();
-    switch (err) {
-      case E_DTA_FILE_ERROR: // falls through to default
-      default:
-        fprintf(stderr, "Error opening data\n");
-    }
-    exit(EXIT_FAILURE);
-  }
+  if (err) EXIT("Error opening data\n");
 
   err = Frame_load(frame, data);
   if (err) {
@@ -90,21 +91,13 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  // data->shift_col(data, frame, 1, data->args);
-  // data->shift_row(data, frame, 1, data->args);
-
   Frame_print(frame, O_FRM_DATA | O_FRM_CURS);
 
   err = yyparse();
-  if (err) {
-    endwin();
-    fprintf(stderr, "Error parsing user input\n");
-    exit(EXIT_FAILURE);
-  }
+  if (err) EXIT("Error parsing user input\n");
 
   endwin();
 
-  // if (data->close(data->args)) {
   if (Data_close(data)) {
     fprintf(stderr, "Error closing data\n");
     exit(EXIT_FAILURE);

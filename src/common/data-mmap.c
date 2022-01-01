@@ -7,7 +7,7 @@
 //
 
 #include <stdlib.h>   // exit, EXIT_FAILURE
-#include <string.h>   // strdup
+#include <string.h>   // strdup, strlen
 #include <stdint.h>   // uint8_t
 
 #include <sys/mman.h> // mmap, MAP_FAILED
@@ -20,11 +20,12 @@
 #include "frame.h"
 #include "errorcodes.h"
 
-// TODO: change these to powers of two to be able to test for multiples
-#define TOK_OK    0
-#define TOK_EOL   1
-#define TOK_EOF   2
-#define TOK_ERR   3
+// TODO: add function for freeing data in frame nodes
+
+#define TOK_OK    1
+#define TOK_EOL   2
+#define TOK_EOF   4
+#define TOK_ERR   8
 
 typedef struct mmap_args {
   char *path;
@@ -79,10 +80,12 @@ static int get_tok_r(char **tok, int *nbytes, char *str, const char delim,
 
 }
 
+// TODO: enable getting multiple rows at a time to make this more efficient
+
 static int get_row(Data_T data, char **buf, int row, int col_start, int col_end) {
 
   // TODO: currently only supports one row lookahead
-  // TODO: increase data->nrows if necessary
+  // TODO: check if line is whitespace
 
   int parsed = 0;
   int *row_offsets = ((mmap_args) data->args)->row_offsets;
@@ -114,8 +117,8 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
 
     while (1) {
       err = get_tok_r(&tok, &nbytes, ptr+row_offsets[row], delim, &saveptr, len);
-      if (err == TOK_ERR || err == TOK_EOF) 
-        return E_DTA_PARSE_ERROR; // TODO: check this
+      if (err & (TOK_ERR | TOK_EOF))
+        return E_DTA_PARSE_ERROR; 
       if (icol >= col_start && icol <= col_end) buf[i++] = tok;
       if (icol == col_end) break;
       icol++;
@@ -142,7 +145,7 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
       icol++;
     }
     row_offsets[row + 1] = total_bytes;
-    // TODO: increase data->nrows here (i think?)
+    data->nrows++;
   }
 
   return E_OK;
@@ -158,16 +161,16 @@ static int get_col(Data_T data, char **buf, int col, int row_start, int row_end)
   char *tok = NULL, *saveptr;
 
   if (col > data->ncols-1) return E_DTA_COL_OOB;
+  if (row_end > data->nrows-1) return E_DTA_ROW_OOB;
 
-  // TODO: check that row_end isn't past data->nrows
-  // TODO: currently doesn't check validity of rows / row_offsets
+  // TODO: check that row offsets are set
   
   for (int irow=row_start, i=0; irow<=row_end; irow++, i++) {
     saveptr = NULL;
     int len = row_offsets[irow+1] - row_offsets[irow];
     for (int icol=0; icol <= col; icol++) {
       err = get_tok_r(&tok, &nbytes, ptr+row_offsets[irow], delim, &saveptr, len);
-      if (err == TOK_ERR || err == TOK_EOF)
+      if (err & (TOK_ERR | TOK_EOF))
         return E_DTA_PARSE_ERROR;
     }
     buf[i] = tok;
@@ -224,8 +227,7 @@ static int data_close(void *args) {
 
 Data_T Data_mmap_init(char *path, char delim) {
 
-  // TODO: check that strlen(path)>0
-  // TODO: check that delim is not NULL
+  if (!delim || !strlen(path)) return NULL;
 
   Data_T data;
   NEW0(data);
@@ -244,7 +246,6 @@ Data_T Data_mmap_init(char *path, char delim) {
 
   data->args = args;
 
-  // TODO: if issues, return NULL
   return data;
 
 }

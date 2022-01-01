@@ -24,15 +24,12 @@ Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 
   Frame_T frame;
   NEW0(frame);
-
-  // TODO: need to put headers and data with the data to be
-  // able to properly free it
   
-  // TODO: add error checking to these values
+  if (!col_width || !max_cols || !max_rows) return NULL;
 
   frame->col_width = col_width;
   frame->max_cols = max_cols;
-  frame->max_rows = max_rows - (headers ? 1 : 0);
+  frame->max_rows = max_rows;
   frame->headers = headers ? Deque_new() : NULL;
   frame->data = Deque_new();
 
@@ -58,7 +55,7 @@ void Frame_free(Frame_T *frame) {
 int Frame_load(Frame_T frame, Data_T data) {
 
   Deque_T col = NULL;
-  int ret, irow = 0, icol = 0;
+  int ret; 
   char *buf[MAX_COLS] = { 0 };
 
   // TODO: return appropriate error code
@@ -68,27 +65,23 @@ int Frame_load(Frame_T frame, Data_T data) {
 
   frame->ncols = MIN(data->ncols, frame->max_cols);
 
-  for (icol = 0; icol<frame->ncols; icol++) {
+  for (int icol = 0; icol<frame->ncols; icol++) {
     col = Deque_new();
     Deque_addhi(frame->data, col);
     if (frame->headers) Deque_addhi(frame->headers, buf[icol]);
     else Deque_addhi(col, buf[icol]);
   }
 
-  if(frame->headers) frame->nrows++;
-  else {
-    frame->nrows += 2;
-    irow++;
-  }
+  frame->nrows++;
 
   // Load remaining rows
-  for (irow++ ; irow < frame->max_rows ; irow++) {
+  for (int irow=1; irow < frame->max_rows ; irow++) {
 
     ret = data->get_row(data, buf, irow, 0, frame->ncols-1);
     if (ret == E_DTA_EOF) break;
     else if (ret != E_OK) return E_DTA_PARSE_ERROR;
 
-    for (icol = 0; icol < frame->ncols; icol++) {
+    for (int icol = 0; icol < frame->ncols; icol++) {
       col = Deque_get(frame->data, icol);
       Deque_addhi(col, buf[icol]);
     }
@@ -96,33 +89,28 @@ int Frame_load(Frame_T frame, Data_T data) {
     frame->nrows++;
   }
 
-  // Assume there is a always a header, for consistent indexing
-  frame->data_loaded.first_row = 1;
+  frame->data_loaded.first_row = !!frame->headers;
   frame->data_loaded.last_col = frame->ncols - 1;
-  frame->data_loaded.last_row = frame->nrows - 1;
-  data->nrows = frame->nrows; 
+  frame->data_loaded.last_row = data->nrows - 1;
 
   return E_OK;
 
 }
 
-int Frame_print(Frame_T frame, unsigned char what) {
+int Frame_print(Frame_T frame, unsigned char action) {
 
   assert(frame && Deque_length(frame->data) > 0);
-  
-  // TODO: handle this error with error code or in data_load
-  assert(!frame->headers || 
-    Deque_length(frame->headers) == Deque_length(frame->data));
 
   // TODO: check somehow to see what has changed
+  // TODO: add error handling to this function
   
-  if (what & O_FRM_DATA) {
+  if (action & O_FRM_DATA) {
 
     // on when to use erase() vs clear()
     // lists.gnu.org/archive/html/bug-ncurses/2014-01/msg00007.html
     erase();
 
-    int headers = frame->headers ? 1 : 0;
+    int headers = !!frame->headers;
 
     for (int icol=0; icol<frame->ncols; icol++) {
       int text_start = icol*frame->col_width+1;
@@ -138,9 +126,7 @@ int Frame_print(Frame_T frame, unsigned char what) {
       // Print data
       Deque_T col = Deque_get(frame->data, icol);
 
-      // TODO: throw error if we can't get data
-
-      for (int irow=0, n=0; irow<frame->nrows-1; irow++, n++) {
+      for (int irow=0, n=0; irow < (frame->nrows - headers); irow++, n++) {
         mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
         if (icol < frame->ncols-1) // print for all but the last column
           mvaddstr(irow + headers, (icol+1)*frame->col_width-1, "|");
@@ -149,7 +135,7 @@ int Frame_print(Frame_T frame, unsigned char what) {
 
   } 
 
-  if (what & O_FRM_CURS) {
+  if (action & O_FRM_CURS) {
     chgat(frame->col_width-1, A_NORMAL, 0, NULL);
   }
 
@@ -245,7 +231,7 @@ int Frame_shift_col(Frame_T frame, Data_T data, int n) {
   col = Deque_new();
   push(frame->data, col);
 
-  for (int i = 0; i<frame->nrows-1; i++)
+  for (int i = 0; i<(frame->nrows - !!frame->headers); i++)
     Deque_addhi(col, data_buf[i]);
 
   frame->data_loaded.first_col += n;
@@ -254,4 +240,3 @@ int Frame_shift_col(Frame_T frame, Data_T data, int n) {
   return E_OK;
 
 }
-

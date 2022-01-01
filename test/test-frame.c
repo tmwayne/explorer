@@ -15,13 +15,13 @@ int tests_run = 0;
 
 // Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers);
 static char *test_Frame_init_valid() {
-  Frame_T frame = Frame_init(0, 0, 0, 0);
-  mu_assert("Frame init returned NULL", frame);
+  Frame_T frame = Frame_init(1, 1, 1, 0);
+  mu_assert("Frame_init returned NULL", frame);
 }
   
 // void Frame_free(Frame_T *frame);
 static char *test_Frame_free_valid() {
-  Frame_T frame = Frame_init(0, 0, 0, 0);
+  Frame_T frame = Frame_init(1, 1, 1, 0);
   Frame_free(&frame);
   mu_assert("Frame didn't set frame to NULL", !frame);
 }
@@ -55,7 +55,7 @@ static char *test_Frame_print_throw_NULL_frame() {
 
 static char *test_Frame_print_throw_length0_data() {
   unsigned char pass = 0;
-  Frame_T frame = Frame_init(0, 0, 0, 0); // no data loaded
+  Frame_T frame = Frame_init(1, 1, 1, 0);
   TRY Frame_print(frame, O_FRM_DATA);
   EXCEPT (Assert_Failed) pass = 1;
   END_TRY;

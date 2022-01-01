@@ -23,4 +23,6 @@
 #define E_DTA_MAX_ROWS 8
 #define E_DTA_EOF 9
 
+// TODO: add frame error codes
+
 #endif // ERRORCODES_INCLUDED

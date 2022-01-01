@@ -56,7 +56,8 @@ cmd:
                           if (frame->cursor.row > 0) {
                             frame->cursor.row--;
                             Frame_print(frame, O_FRM_CURS);
-                          } else if (frame->data_loaded.first_row > 1) {
+                          } else if 
+                            (frame->data_loaded.first_row > !!frame->headers) {
                             Frame_shift_row(frame, data, -1);
                             Frame_print(frame, O_FRM_DATA);
                           }

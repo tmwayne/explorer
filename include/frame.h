@@ -70,7 +70,7 @@ extern int Frame_load(Frame_T frame, Data_T data);
 extern void     Frame_free(Frame_T *frame);
 extern int      Frame_shift_row(Frame_T frame, Data_T data, int n);
 extern int      Frame_shift_col(Frame_T frame, Data_T data, int n);
-extern int      Frame_print(Frame_T frame, unsigned char what);
+extern int      Frame_print(Frame_T frame, unsigned char action);
 
 extern Data_T Data_mmap_init(char *path, char delim);
 extern void   Data_mmap_free(Data_T *data);
