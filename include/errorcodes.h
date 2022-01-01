@@ -19,7 +19,8 @@
 #define E_DTA_MISSING_FIELD 4
 #define E_DTA_RESOURCE_ERROR 5
 #define E_DTA_PARSE_ERROR 6
-#define E_DTA_INVALID_INPUT 7
+#define E_DTA_BAD_INPUT 7
 #define E_DTA_MAX_ROWS 8
+#define E_DTA_EOF 9
 
 #endif // ERRORCODES_INCLUDED

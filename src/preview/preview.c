@@ -49,7 +49,6 @@ int main(int argc, char **argv) {
   getmaxyx(stdscr, max_rows, max_cols);
   max_cols /= col_width;
 
-
   // TODO: determine appropriate column width
   frame = Frame_init(
     col_width,            // col_width
