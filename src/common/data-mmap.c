@@ -22,25 +22,18 @@
 
 // TODO: write a note somewhere that we always assume headers
 
-// TODO: set this dynamically?
-#define MAX_ROWS 8192
-#define MAX_COLS 1024
-
 // TODO: change these to powers of two to be able to test for multiples
 #define TOK_OK    0
 #define TOK_EOL   1
 #define TOK_EOF   2
 #define TOK_ERR   3
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-
 typedef struct mmap_args {
   char *path;
   char delim;
   char *ptr;
   ssize_t st_size;
-  int *row_offsets; // Currently handles up to ~4GB
+  int *row_offsets;
 } *mmap_args;
 
 static int get_tok_r(char **tok, int *nbytes, char *str, const char delim, 
@@ -155,7 +148,6 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
     // row_offsets[row + 1] = total_bytes;
     if (row == 0 && !data->headers) row_offsets[row + 2] = total_bytes;
     else row_offsets[row + 1] = total_bytes;
-    // row_offsets[row + !data->headers + 1] = total_bytes;
   }
 
   return E_OK;
@@ -212,157 +204,12 @@ static int data_open(void *args) {
     0                       // offset
   );
 
-  // TODO: how should this interplay with the next check?
   close(fd);
 
   if (ptr == MAP_FAILED) return E_DTA_FILE_ERROR;
 
   _args->st_size = statbuf.st_size;
   _args->ptr = ptr;
-
-  return E_OK;
-
-}
-
-static int data_load(Data_T data, Frame_T frame, void *args) {
-
-  Deque_T col = NULL;
-  int ret, irow = 0, icol = 0;
-  char *buf[MAX_COLS] = { 0 };
-
-  // TODO: return appropriate error code
-  // Load first row, which may be header
-  if ((ret = get_row(data, buf, 0, 0, frame->max_cols-1)) != E_OK) 
-    return E_DTA_PARSE_ERROR;
-
-  frame->ncols = MIN(data->ncols, frame->max_cols);
-
-  for (icol = 0; icol<frame->ncols; icol++) {
-    col = Deque_new();
-    Deque_addhi(frame->data, col);
-    if (data->headers) Deque_addhi(frame->headers, buf[icol]);
-    else Deque_addhi(col, buf[icol]);
-  }
-
-  if(data->headers) frame->nrows++;
-  else {
-    frame->nrows += 2;
-    irow++;
-  }
-
-  // Load remaining rows
-  for (irow++ ; irow < frame->max_rows ; irow++) {
-
-    ret = get_row(data, buf, irow, 0, frame->ncols-1);
-    if (ret == E_DTA_EOF) break;
-    else if (ret != E_OK) return E_DTA_PARSE_ERROR;
-
-    for (icol = 0; icol < frame->ncols; icol++) {
-      col = Deque_get(frame->data, icol);
-      Deque_addhi(col, buf[icol]);
-    }
-
-    frame->nrows++;
-  }
-
-  // Assume there is a always a header, for consistent indexing
-  data->inframe.first_row = 1; 
-  data->inframe.last_col = frame->ncols - 1;
-  data->inframe.last_row = frame->nrows - 1;
-  data->nrows = frame->nrows; 
-
-  return E_OK;
-
-}
-static int shift_row(Data_T data, Frame_T frame, int n, void *args) {
-  
-  void *(*pop)(Deque_T deque);
-  void *(*push)(Deque_T deque, void *x);
-  int new_row_ind;
-
-  if (n == 1) { // add row on bottom (scroll down)
-    new_row_ind = data->inframe.last_row + 1;
-    pop = Deque_remlo;
-    push = Deque_addhi;
-  } else if (n == -1) { // add row on top (scroll up)
-    new_row_ind = data->inframe.first_row - 1;
-    pop = Deque_remhi;
-    push = Deque_addlo;
-  } else return E_DTA_BAD_INPUT;
-
-  if (new_row_ind+1 == MAX_ROWS) return E_DTA_MAX_ROWS;
-
-  char *buf[frame->ncols];
-
-  int ret = get_row(data, buf, new_row_ind, 0, frame->ncols-1);
-  if (ret == E_DTA_EOF) return E_DTA_EOF;
-  if (ret != E_OK) return E_DTA_PARSE_ERROR;
-
-  int icol = data->inframe.first_col, i = 0;
-  while (icol <= data->inframe.last_col) {
-    Deque_T col = Deque_get(frame->data, i);
-    pop(col);
-    push(col, buf[i]);
-    icol++, i++;
-  }
-
-  data->inframe.first_row += n;
-  data->inframe.last_row += n;
-  
-  return E_OK;
-
-}
-
-static int shift_col(Data_T data, Frame_T frame, int n, void *args) {
-  
-  void *(*pop)(Deque_T deque);
-  void *(*push)(Deque_T deque, void *x);
-  int new_col_ind;
-
-  if (n == 1) {           // add col to the right
-    new_col_ind = data->inframe.last_col + 1;
-    pop = Deque_remlo;
-    push = Deque_addhi;
-  } else if (n == -1) {   // add col to the left
-    new_col_ind = data->inframe.first_col - 1;
-    pop = Deque_remhi;
-    push = Deque_addlo;
-  } else return E_DTA_BAD_INPUT;
-
-  if (new_col_ind >= data->ncols) return E_DTA_COL_OOB;
-
-  // Get new values from data
-  char *header_buf = NULL;
-  char *data_buf[frame->nrows];
-
-  // Load data
-  if (data->headers) {
-    if (get_col(data, &header_buf, new_col_ind, 0, 0) != E_OK)
-      return E_DTA_PARSE_ERROR;
-  }
-
-  int ret = get_col(data, data_buf, new_col_ind, 
-    data->inframe.first_row, data->inframe.last_row);
-
-  if (ret != E_OK) return E_DTA_PARSE_ERROR;
-
-  // Update frame
-  if (data->headers) {
-    pop(frame->headers);
-    push(frame->headers, header_buf);
-  }
-
-  Deque_T col = pop(frame->data);
-  Deque_free(&col);
-
-  col = Deque_new();
-  push(frame->data, col);
-
-  for (int i = 0; i<frame->nrows-1; i++)
-    Deque_addhi(col, data_buf[i]);
-
-  data->inframe.first_col += n;
-  data->inframe.last_col += n;
 
   return E_OK;
 
@@ -382,16 +229,17 @@ static int data_close(void *args) {
 
 Data_T Data_mmap_init(char *path, char delim, int headers) {
 
-  // TODO: error check argument values
+  // TODO: check that strlen(path)>0
+  // TODO: check that delim is not NULL
 
   Data_T data;
   NEW0(data);
 
+  // TODO: do we need headers?
   data->headers = headers ? 1 : 0; // any non-zero interpreted as 1
   data->open = data_open;
-  data->load = data_load;
-  data->shift_col = shift_col;
-  data->shift_row = shift_row;;
+  data->get_col = get_col;
+  data->get_row = get_row;;
   data->close = data_close;
 
   mmap_args args;

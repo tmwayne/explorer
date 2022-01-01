@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  err = data->load(data, frame, data->args);
+  err = Frame_load(frame, data);
   if (err) {
     endwin();
     switch (err) {

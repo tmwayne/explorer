@@ -23,6 +23,10 @@
 #define Data_shift_row(data, frame, n) \
   (data)->shift_row((data), (frame), (n), (data)->args)
 
+// TODO: set this dynamically?
+#define MAX_ROWS 8192
+#define MAX_COLS 1024
+
 typedef struct Frame_T {
   int col_width;
   int max_cols;
@@ -33,6 +37,12 @@ typedef struct Frame_T {
     int row;
     int col;
   } cursor;
+  struct data_loaded {
+    int first_row;
+    int first_col;
+    int last_row;
+    int last_col;
+  } data_loaded;
   Deque_T headers;
   Deque_T data;
 } *Frame_T;
@@ -41,22 +51,23 @@ typedef struct Data_T {
   int ncols;
   int nrows;
   int headers;
-  struct inframe {
-    int first_row;
-    int first_col;
-    int last_row;
-    int last_col;
-  } inframe;
   int (*open)(void *args);
-  int (*load)(struct Data_T *data, Frame_T frame, void *args);
-  int (*shift_col)(struct Data_T *data, Frame_T frame, int n, void *args);
-  int (*shift_row)(struct Data_T *data, Frame_T frame, int n, void *args);
+
+  int (*get_col)(struct Data_T *data, char **buf, 
+    int col, int row_start, int row_end);
+
+  int (*get_row)(struct Data_T *data, char **buf,
+    int row, int col_start, int col_end);
+
   int (*close)();
   void *args;
 } *Data_T;
 
 extern Frame_T  Frame_init(int col_width, int max_cols, int max_rows, int headers);
+extern int Frame_load(Frame_T frame, Data_T data);
 extern void     Frame_free(Frame_T *frame);
+extern int      Frame_shift_row(Frame_T frame, Data_T data, int n);
+extern int      Frame_shift_col(Frame_T frame, Data_T data, int n);
 extern int      Frame_print(Frame_T frame, unsigned char what);
 
 extern Data_T Data_file_init(char *path, char delim, int headers);
