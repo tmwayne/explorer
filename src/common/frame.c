@@ -6,7 +6,6 @@
 
 #include <string.h>   // strdup
 #include "mem.h"      // NEW0, CALLOC, FREE
-#include "cstrings.h" // get_line, get_tok_r
 #include "deque.h"
 #include "frame.h"
 #include "errorcodes.h"

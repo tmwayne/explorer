@@ -1,6 +1,5 @@
 noinst_LTLIBRARIES = libcommon.la
 libcommon_la_SOURCES = assert.c \
-	cstrings.c \
 	deque.c \
 	except.c \
 	frame.c \
