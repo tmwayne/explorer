@@ -38,7 +38,8 @@ cmd:
                             frame->cursor.col -= frame->col_width;
                             Frame_print(frame, O_FRM_CURS);
                           } else if (data->inframe.first_col > 0) {
-                            data->shift_col(data, frame, -1, data->args);
+                            // data->shift_col(data, frame, -1, data->args);
+                            Data_shift_col(data, frame, -1);
                             Frame_print(frame, O_FRM_DATA);
                           }
                         }
@@ -47,7 +48,8 @@ cmd:
                             frame->cursor.col += frame->col_width;
                             Frame_print(frame, O_FRM_CURS);
                           } else if (data->inframe.last_col < data->ncols-1) {
-                            data->shift_col(data, frame, 1, data->args);
+                            // data->shift_col(data, frame, 1, data->args);
+                            Data_shift_col(data, frame, 1);
                             Frame_print(frame, O_FRM_DATA);
                           }
                         }
@@ -56,7 +58,8 @@ cmd:
                             frame->cursor.row--;
                             Frame_print(frame, O_FRM_CURS);
                           } else if (data->inframe.first_row > 1) {
-                            data->shift_row(data, frame, -1, data->args);
+                            // data->shift_row(data, frame, -1, data->args);
+                            Data_shift_row(data, frame, -1);
                             Frame_print(frame, O_FRM_DATA);
                           }
                         }
@@ -65,8 +68,8 @@ cmd:
                           if (frame->cursor.row < frame->nrows - 1) {
                             frame->cursor.row++;
                             Frame_print(frame, O_FRM_CURS);
-                          } else if (
-                            (data->shift_row(data, frame, 1, data->args))==E_OK)
+                          } else if (Data_shift_row(data, frame, 1) == E_OK)
+                            // (data->shift_row(data, frame, 1, data->args))==E_OK)
                             Frame_print(frame, O_FRM_DATA);
                         }
   ;

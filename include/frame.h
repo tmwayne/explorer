@@ -17,6 +17,12 @@
 #define O_FRM_CURS 1
 #define O_FRM_DATA 2
 
+#define Data_shift_col(data, frame, n) \
+  (data)->shift_col((data), (frame), (n), (data)->args)
+
+#define Data_shift_row(data, frame, n) \
+  (data)->shift_row((data), (frame), (n), (data)->args)
+
 typedef struct Frame_T {
   int col_width;
   int max_cols;
