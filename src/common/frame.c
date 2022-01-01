@@ -14,7 +14,19 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-static void free_deque_node(void **x, void *cl) {
+struct free_col_args {
+  void (*free_node)(void **node, void *args);
+  void *args;
+};
+
+static void free_data_col(void **x, void *cl) {
+
+  Deque_T *col = (Deque_T *) x;
+
+  // Free the data in each node using passed function
+  struct free_col_args args = *(struct free_col_args *) cl;
+
+  if (args.free_node) Deque_map(*col, args.free_node, args.args);
   
   Deque_free((Deque_T *) x);
 
@@ -37,14 +49,22 @@ Frame_T Frame_init(int col_width, int max_cols, int max_rows, int headers) {
 
 }
 
-void Frame_free(Frame_T *frame) {
+void Frame_free(Frame_T *frame, void free_node(void **node, void *args), 
+  void *args) {
 
   assert(frame && *frame && (*frame)->data);
 
   if ((*frame)->headers) Deque_free(&(*frame)->headers);
 
+  struct free_col_args free_col_args = { NULL, NULL };
+
+  if (free_node) {
+    free_col_args.free_node = free_node;
+    free_col_args.args = args;
+  }
+
   if (Deque_length((*frame)->data) > 0)
-    Deque_map((*frame)->data, free_deque_node, NULL);
+    Deque_map((*frame)->data, free_data_col, &free_col_args);
 
   Deque_free(&(*frame)->data);
 

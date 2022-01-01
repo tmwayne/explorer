@@ -20,8 +20,6 @@
 #include "frame.h"
 #include "errorcodes.h"
 
-// TODO: add function for freeing data in frame nodes
-
 #define TOK_OK    1
 #define TOK_EOL   2
 #define TOK_EOF   4
@@ -236,6 +234,9 @@ Data_T Data_mmap_init(char *path, char delim) {
   data->get_col = get_col;
   data->get_row = get_row;;
   data->close = data_close;
+
+  // Nothing needs to be done to free nodes inside the frame
+  data->free_node = NULL;
 
   mmap_args args;
   NEW0(args);

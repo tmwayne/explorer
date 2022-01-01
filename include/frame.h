@@ -17,12 +17,6 @@
 #define O_FRM_CURS 1
 #define O_FRM_DATA 2
 
-#define Data_shift_col(data, frame, n) \
-  (data)->shift_col((data), (frame), (n), (data)->args)
-
-#define Data_shift_row(data, frame, n) \
-  (data)->shift_row((data), (frame), (n), (data)->args)
-
 #define Data_open(data) (data->open)(data->args)
 #define Data_close(data) (data->close)(data->args)
 
@@ -62,12 +56,14 @@ typedef struct Data_T {
     int row, int col_start, int col_end);
 
   int (*close)(void *args);
+  void (*free_node)(void **node, void *args);
   void *args;
 } *Data_T;
 
 extern Frame_T  Frame_init(int col_width, int max_cols, int max_rows, int headers);
-extern int Frame_load(Frame_T frame, Data_T data);
-extern void     Frame_free(Frame_T *frame);
+extern int      Frame_load(Frame_T frame, Data_T data);
+extern void     Frame_free(Frame_T *frame, 
+                  void free_node(void **node, void *args), void *args);
 extern int      Frame_shift_row(Frame_T frame, Data_T data, int n);
 extern int      Frame_shift_col(Frame_T frame, Data_T data, int n);
 extern int      Frame_print(Frame_T frame, unsigned char action);

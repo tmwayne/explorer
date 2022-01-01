@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+  Frame_free(&frame, data->free_node, NULL);
   Data_mmap_free(&data);
-  Frame_free(&frame);
 
 }
