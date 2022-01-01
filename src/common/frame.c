@@ -71,11 +71,11 @@ int Frame_load(Frame_T frame, Data_T data) {
   for (icol = 0; icol<frame->ncols; icol++) {
     col = Deque_new();
     Deque_addhi(frame->data, col);
-    if (data->headers) Deque_addhi(frame->headers, buf[icol]);
+    if (frame->headers) Deque_addhi(frame->headers, buf[icol]);
     else Deque_addhi(col, buf[icol]);
   }
 
-  if(data->headers) frame->nrows++;
+  if(frame->headers) frame->nrows++;
   else {
     frame->nrows += 2;
     irow++;
@@ -223,7 +223,7 @@ int Frame_shift_col(Frame_T frame, Data_T data, int n) {
   char *data_buf[frame->nrows];
 
   // Load data
-  if (data->headers) {
+  if (frame->headers) {
     if (data->get_col(data, &header_buf, new_col_ind, 0, 0) != E_OK)
       return E_DTA_PARSE_ERROR;
   }
@@ -234,7 +234,7 @@ int Frame_shift_col(Frame_T frame, Data_T data, int n) {
   if (ret != E_OK) return E_DTA_PARSE_ERROR;
 
   // Update frame
-  if (data->headers) {
+  if (frame->headers) {
     pop(frame->headers);
     push(frame->headers, header_buf);
   }

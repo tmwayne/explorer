@@ -59,11 +59,11 @@ int main(int argc, char **argv) {
 
   data = Data_mmap_init(
     arguments.path,       // path
-    arguments.delim,      // delim
-    arguments.headers     // headers
+    arguments.delim       // delim
   );
 
-  int err = data->open(data->args);
+  // int err = data->open(data->args);
+  int err = Data_open(data);
   if (err) {
     endwin();
     switch (err) {
@@ -104,7 +104,8 @@ int main(int argc, char **argv) {
 
   endwin();
 
-  if (data->close(data->args)) {
+  // if (data->close(data->args)) {
+  if (Data_close(data)) {
     fprintf(stderr, "Error closing data\n");
     exit(EXIT_FAILURE);
   }

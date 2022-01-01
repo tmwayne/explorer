@@ -20,8 +20,6 @@
 #include "frame.h"
 #include "errorcodes.h"
 
-// TODO: write a note somewhere that we always assume headers
-
 // TODO: change these to powers of two to be able to test for multiples
 #define TOK_OK    0
 #define TOK_EOL   1
@@ -100,7 +98,7 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
   if (data->ncols && col_end >= data->ncols) return E_DTA_COL_OOB;
   if (data->ncols && col_end == -1) col_end = data->ncols-1;
 
-  if (row > 0 && (row != 1 || !data->headers)) {
+  if (row > 0) {
     if (row_offsets[row] == len) return E_DTA_EOF;
     if (!row_offsets[row]) return E_DTA_ROW_OOB; 
   }
@@ -125,8 +123,6 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
 
   } else {
 
-    // TODO: this assumes headers
-
     total_bytes = row_offsets[row];
     while (1) {
       err = get_tok_r(&tok, &nbytes, ptr+row_offsets[row], delim, &saveptr, len);
@@ -145,9 +141,8 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
 
       icol++;
     }
-    // row_offsets[row + 1] = total_bytes;
-    if (row == 0 && !data->headers) row_offsets[row + 2] = total_bytes;
-    else row_offsets[row + 1] = total_bytes;
+    row_offsets[row + 1] = total_bytes;
+    // TODO: increase data->nrows here (i think?)
   }
 
   return E_OK;
@@ -227,7 +222,7 @@ static int data_close(void *args) {
 
 }
 
-Data_T Data_mmap_init(char *path, char delim, int headers) {
+Data_T Data_mmap_init(char *path, char delim) {
 
   // TODO: check that strlen(path)>0
   // TODO: check that delim is not NULL
@@ -235,8 +230,6 @@ Data_T Data_mmap_init(char *path, char delim, int headers) {
   Data_T data;
   NEW0(data);
 
-  // TODO: do we need headers?
-  data->headers = headers ? 1 : 0; // any non-zero interpreted as 1
   data->open = data_open;
   data->get_col = get_col;
   data->get_row = get_row;;
