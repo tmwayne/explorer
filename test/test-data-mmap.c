@@ -15,13 +15,13 @@ int tests_run = 0;
 
 // Data_T Data_mmap_init(char *path, char delim, int headers);
 static char *test_Data_init_valid() {
-  Data_T data = Data_mmap_init("path.csv", '|', 1);
+  Data_T data = Data_mmap_init("path.csv", '|');
   mu_assert("Data_mmap_init returned NULL", data);
 }
 
 // void   Data_mmap_free(Data_T *data);
 static char *test_Data_free_valid() {
-  Data_T data = Data_mmap_init("path.csv", '|', 1);
+  Data_T data = Data_mmap_init("path.csv", '|');
   Data_mmap_free(&data);
   mu_assert("Data_mmap_free didn't set data to NULL", !data);
 }
@@ -45,7 +45,7 @@ static char *test_Data_free_throw_NULL_data() {
 
 static char *test_Data_free_throw_NULL_data_args() {
   unsigned char pass = 0;
-  Data_T data = Data_mmap_init("path.csv", '|', 1);
+  Data_T data = Data_mmap_init("path.csv", '|');
   data->args = NULL;
   TRY Data_mmap_free(&data);
   EXCEPT (Assert_Failed) pass = 1;
