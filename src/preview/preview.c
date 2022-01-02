@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   struct arguments arguments;
   arguments.headers = 1;
   arguments.col_width = 16;
-  arguments.delim = '|';
+  arguments.delim = ',';
 
   // Command line arguments
   argp_parse(&argp, argc, argv, 0, 0, &arguments);

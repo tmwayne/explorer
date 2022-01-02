@@ -42,6 +42,9 @@ AC_CONFIG_FILES([
   src/common/Makefile
   src/input-parser/Makefile
   src/preview/Makefile
-  test/Makefile])
+  test/Makefile
+  test/data/Makefile
+  test/unit/Makefile
+  test/integration/Makefile])
 
 AC_OUTPUT

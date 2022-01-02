@@ -1,7 +1,7 @@
 number,greeting,letter,float,year,state
 1,hello!,a,45.6,1988,Kansas
-2,hey there..,b,66.66,2017,Texas
+2,hey there..,,66.66,2017,Texas
 3,aloha,c,98.2,1984,Massachusetts
-4,bonjour,d,0.0,1957,Washington
+4,bonjour,d,0.0,,Washington
 5,ciao,e,7.2,1970,Austin
 6,sup,f,88,2000,New Orleans
