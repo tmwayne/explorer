@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  Frame_print(frame, O_FRM_DATA | O_FRM_CURS);
+  Frame_print(frame, data, O_FRM_DATA | O_FRM_CURS);
 
   err = yyparse();
   if (err) EXIT("Error parsing user input\n");

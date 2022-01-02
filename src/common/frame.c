@@ -116,10 +116,13 @@ int Frame_load(Frame_T frame, Data_T data) {
 
 }
 
-int Frame_print(Frame_T frame, unsigned char action) {
+int Frame_print(Frame_T frame, Data_T data, unsigned char action) {
 
-  assert(frame && Deque_length(frame->data) > 0);
+  assert(frame && Deque_length(frame->data));
+  
+  // TODO: error checks for data
 
+  // TODO: print row,col and %
   // TODO: check somehow to see what has changed
   // TODO: add error handling to this function
   
@@ -137,7 +140,13 @@ int Frame_print(Frame_T frame, unsigned char action) {
 
       // Print headers
       if (frame->headers) {
-        mvaddnstr(0, text_start, Deque_get(frame->headers, icol), text_width);
+
+        if (data->mvaddntok) 
+          data->mvaddntok(0, text_start, Deque_get(frame->headers, icol),
+            text_width, data->args);
+        else 
+          mvaddnstr(0, text_start, Deque_get(frame->headers, icol), text_width);
+
         if (icol < frame->ncols-1)
           mvaddstr(0, (icol+1)*frame->col_width-1, "|");
       }
@@ -146,7 +155,13 @@ int Frame_print(Frame_T frame, unsigned char action) {
       Deque_T col = Deque_get(frame->data, icol);
 
       for (int irow=0, n=0; irow < (frame->nrows - headers); irow++, n++) {
-        mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
+
+        if (data->mvaddntok)
+          data->mvaddntok(irow + headers, text_start, 
+            Deque_get(col, irow), text_width, data->args);
+        else
+          mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
+
         if (icol < frame->ncols-1) // print for all but the last column
           mvaddstr(irow + headers, (icol+1)*frame->col_width-1, "|");
       }

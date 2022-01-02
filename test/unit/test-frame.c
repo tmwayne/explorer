@@ -62,7 +62,8 @@ static char *test_Frame_free_throw_NULL_frame() {
 static char *test_Frame_print_throw_NULL_frame() {
   unsigned char pass = 0;
   Frame_T frame = NULL;
-  TRY Frame_print(frame, O_FRM_DATA);
+  Data_T data = NULL;
+  TRY Frame_print(frame, data, O_FRM_DATA);
   EXCEPT (Assert_Failed) pass = 1;
   END_TRY;
   mu_assert("Frame_print didn't throw error when passed NULL frame", pass);
@@ -71,7 +72,8 @@ static char *test_Frame_print_throw_NULL_frame() {
 static char *test_Frame_print_throw_length0_data() {
   unsigned char pass = 0;
   Frame_T frame = Frame_init(1, 1, 1, 0);
-  TRY Frame_print(frame, O_FRM_DATA);
+  Data_T data = NULL;
+  TRY Frame_print(frame, data, O_FRM_DATA);
   EXCEPT (Assert_Failed) pass = 1;
   END_TRY;
   mu_assert("Frame_print didn't throw error when passed length 0 data", pass);

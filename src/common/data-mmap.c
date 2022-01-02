@@ -55,7 +55,7 @@ static int get_tok_r(char **tok, int *nbytes, char *str, const char delim,
         return TOK_OK;
 
       case '\n':
-        field[i] = '\0';
+        // field[i] = '\0';
         *saveptr += (i+1);
         *tok = field;
         return TOK_EOL;
@@ -66,7 +66,7 @@ static int get_tok_r(char **tok, int *nbytes, char *str, const char delim,
 
       default:
         if (field[i]==delim && !in_quote) {
-          field[i] = '\0';
+          // field[i] = '\0';
           *saveptr += (i+1);
           *tok = field;
           return TOK_OK;
@@ -180,6 +180,8 @@ static int get_col(Data_T data, char **buf, int col, int row_start, int row_end)
 
 static int data_open(void *args) {
 
+  // TODO: load only portion of data, if file is too large
+
   mmap_args _args = args;
 
   int fd = open(_args->path, O_RDONLY);
@@ -194,8 +196,8 @@ static int data_open(void *args) {
   char *ptr = mmap(
     NULL,                   // address
     statbuf.st_size,        // length
-    PROT_READ | PROT_WRITE, // protection level
-    MAP_PRIVATE,            // flags
+    PROT_READ,              // protection level
+    MAP_SHARED,             // flags
     fd,                     // file descriptor
     0                       // offset
   );
@@ -223,6 +225,27 @@ static int data_close(void *args) {
 
 }
 
+// Our tokens from mmap won't be NULL-terminated.
+// Instead they'll be terminated by either the delimiter
+// or the newline. We avoid writing to the mmap-ed file
+// by printing based on these new terminators
+static int mvaddntok(int row, int col, const char *tok, 
+  int n, void *args) {
+
+  // TODO: we need some error handling
+  // TODO: check input values
+  char delim = ((mmap_args) args)->delim;
+  
+  for (int c=0; c<n; c++) {
+    if (*tok == delim || *tok == '\n') return 1; // TODO: figure out return value
+    else mvaddch(row, col, *tok);
+    col++, tok++;
+  }
+
+  return 1;
+
+}
+
 Data_T Data_mmap_init(char *path, char delim) {
 
   if (!delim || !strlen(path)) return NULL;
@@ -233,6 +256,7 @@ Data_T Data_mmap_init(char *path, char delim) {
   data->open = data_open;
   data->get_col = get_col;
   data->get_row = get_row;;
+  data->mvaddntok = mvaddntok;
   data->close = data_close;
 
   // Nothing needs to be done to free nodes inside the frame
