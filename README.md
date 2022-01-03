@@ -31,5 +31,5 @@ make install
 ## Notes
 
 As `preview` is free software, I make no guarantee to its performance.
-Currently, there's no support for `stdin`, meaning `cat <data> | preview`
+Currently, there's no support for piping, meaning `cat <data> | preview`
 doesn't work. This is being added now.
