@@ -17,8 +17,8 @@
 #define O_FRM_CURS 1
 #define O_FRM_DATA 2
 
-#define Data_open(data) (data->open)(data->args)
-#define Data_close(data) (data->close)(data->args)
+#define Data_open(data) (data->open)(data)
+#define Data_close(data) (data->close)(data)
 
 // TODO: set this dynamically?
 #define MAX_ROWS 8192
@@ -45,9 +45,13 @@ typedef struct Frame_T {
 } *Frame_T;
 
 typedef struct Data_T {
+  char *path;
+  char delim;
+  int *row_offsets;
+  ssize_t st_size;
   int ncols;
   int nrows;
-  int (*open)(void *args);
+  int (*open)(struct Data_T *data);
 
   int (*get_col)(struct Data_T *data, char **buf, 
     int col, int row_start, int row_end);
@@ -56,9 +60,9 @@ typedef struct Data_T {
     int row, int col_start, int col_end);
 
   int (*mvaddntok)(int row, int col, const char *str,
-    int n, void *args);
+    int n, char delim);
 
-  int (*close)(void *args);
+  int (*close)(struct Data_T *data);
   void (*free_node)(void **node, void *args);
   void *args;
 } *Data_T;
@@ -69,7 +73,7 @@ extern void     Frame_free(Frame_T *frame,
                   void free_node(void **node, void *args), void *args);
 extern int      Frame_shift_row(Frame_T frame, Data_T data, int n);
 extern int      Frame_shift_col(Frame_T frame, Data_T data, int n);
-extern int      Frame_print(Frame_T frame, Data_T data, unsigned char action);
+extern int      Frame_print(Frame_T frame, Data_T data, int action);
 
 extern Data_T Data_mmap_init(char *path, char delim);
 extern void   Data_mmap_free(Data_T *data);

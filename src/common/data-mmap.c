@@ -26,11 +26,7 @@
 #define TOK_ERR   8
 
 typedef struct mmap_args {
-  char *path;
-  char delim;
   char *ptr;
-  ssize_t st_size;
-  int *row_offsets;
 } *mmap_args;
 
 static int get_tok_r(char **tok, int *nbytes, char *str, const char delim, 
@@ -86,10 +82,9 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
   // TODO: check if line is whitespace
 
   int parsed = 0;
-  int *row_offsets = ((mmap_args) data->args)->row_offsets;
-  ssize_t len = ((mmap_args) data->args)->st_size;
+  int *row_offsets = data->row_offsets;
+  ssize_t len = data->st_size;
   char *ptr = ((mmap_args) data->args)->ptr;
-  char delim = ((mmap_args) data->args)->delim;
   int err, nbytes, total_bytes;
   char *tok, *saveptr = NULL;
 
@@ -114,7 +109,8 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
   if (parsed) {
 
     while (1) {
-      err = get_tok_r(&tok, &nbytes, ptr+row_offsets[row], delim, &saveptr, len);
+      err = get_tok_r(&tok, &nbytes, ptr+row_offsets[row], 
+        data->delim, &saveptr, len);
       if (err & (TOK_ERR | TOK_EOF))
         return E_DTA_PARSE_ERROR; 
       if (icol >= col_start && icol <= col_end) buf[i++] = tok;
@@ -126,7 +122,8 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
 
     total_bytes = row_offsets[row];
     while (1) {
-      err = get_tok_r(&tok, &nbytes, ptr+row_offsets[row], delim, &saveptr, len);
+      err = get_tok_r(&tok, &nbytes, ptr+row_offsets[row], 
+        data->delim, &saveptr, len);
       if (err == TOK_ERR) return E_DTA_PARSE_ERROR; // EOL, EOF are okay
       else if (err == TOK_EOF) break; 
 
@@ -152,24 +149,24 @@ static int get_row(Data_T data, char **buf, int row, int col_start, int col_end)
 
 static int get_col(Data_T data, char **buf, int col, int row_start, int row_end) {
 
-  int *row_offsets = ((mmap_args) data->args)->row_offsets;
+  int *row_offsets = data->row_offsets;
   char *ptr = ((mmap_args) data->args)->ptr;
-  char delim = ((mmap_args) data->args)->delim;
   int err, nbytes; // , total_bytes;
   char *tok = NULL, *saveptr;
 
   if (col > data->ncols-1) return E_DTA_COL_OOB;
   if (row_end > data->nrows-1) return E_DTA_ROW_OOB;
-
-  // TODO: check that row offsets are set
   
   for (int irow=row_start, i=0; irow<=row_end; irow++, i++) {
     saveptr = NULL;
     int len = row_offsets[irow+1] - row_offsets[irow];
     for (int icol=0; icol <= col; icol++) {
-      err = get_tok_r(&tok, &nbytes, ptr+row_offsets[irow], delim, &saveptr, len);
+
+      err = get_tok_r(&tok, &nbytes, ptr+row_offsets[irow], 
+        data->delim, &saveptr, len);
       if (err & (TOK_ERR | TOK_EOF))
         return E_DTA_PARSE_ERROR;
+
     }
     buf[i] = tok;
   }
@@ -178,13 +175,11 @@ static int get_col(Data_T data, char **buf, int col, int row_start, int row_end)
 
 }
 
-static int data_open(void *args) {
+static int data_open(Data_T data) {
 
-  // TODO: load only portion of data, if file is too large
+  mmap_args _args = data->args;
 
-  mmap_args _args = args;
-
-  int fd = open(_args->path, O_RDONLY);
+  int fd = open(data->path, O_RDONLY);
   if (fd < 0) return E_DTA_FILE_ERROR;
 
   struct stat statbuf;
@@ -196,8 +191,8 @@ static int data_open(void *args) {
   char *ptr = mmap(
     NULL,                   // address
     statbuf.st_size,        // length
-    PROT_READ,              // protection level
-    MAP_SHARED,             // flags
+    PROT_READ,              // protection
+    MAP_SHARED,             // privacy
     fd,                     // file descriptor
     0                       // offset
   );
@@ -206,19 +201,18 @@ static int data_open(void *args) {
 
   if (ptr == MAP_FAILED) return E_DTA_FILE_ERROR;
 
-  _args->st_size = statbuf.st_size;
+  data->st_size = statbuf.st_size;
   _args->ptr = ptr;
 
   return E_OK;
 
 }
 
-static int data_close(void *args) {
+static int data_close(Data_T data) {
 
-  char *ptr = ((mmap_args) args)->ptr;
-  ssize_t st_size = ((mmap_args) args)->st_size;
+  char *ptr = ((mmap_args) data->args)->ptr;
 
-  if (munmap(ptr, st_size) != 0)
+  if (munmap(ptr, data->st_size) != 0)
     return E_DTA_RESOURCE_ERROR;
   
   return E_OK;
@@ -230,11 +224,7 @@ static int data_close(void *args) {
 // or the newline. We avoid writing to the mmap-ed file
 // by printing based on these new terminators
 static int mvaddntok(int row, int col, const char *tok, 
-  int n, void *args) {
-
-  // TODO: we need some error handling
-  // TODO: check input values
-  char delim = ((mmap_args) args)->delim;
+  int n, char delim) { // this needs to be args
   
   for (int c=0; c<n; c++) {
     if (*tok == delim || *tok == '\n') return 1; // TODO: figure out return value
@@ -253,6 +243,9 @@ Data_T Data_mmap_init(char *path, char delim) {
   Data_T data;
   NEW0(data);
 
+  data->path = path;
+  data->delim = delim;
+  data->row_offsets = calloc(MAX_ROWS, sizeof(int));
   data->open = data_open;
   data->get_col = get_col;
   data->get_row = get_row;;
@@ -265,10 +258,6 @@ Data_T Data_mmap_init(char *path, char delim) {
   mmap_args args;
   NEW0(args);
 
-  args->path = path;
-  args->delim = delim;
-  args->row_offsets = calloc(MAX_ROWS, sizeof(int));
-
   data->args = args;
 
   return data;
@@ -278,12 +267,10 @@ Data_T Data_mmap_init(char *path, char delim) {
 void Data_mmap_free(Data_T *data) {
 
   assert(data && *data && (*data)->args); 
+  assert((*data)->row_offsets);
 
-  mmap_args args = (*data)->args;
-  assert(args->row_offsets);
-
-  FREE(args->row_offsets);
-  FREE(args);
+  FREE((*data)->row_offsets);
+  FREE((*data)->args);
   FREE(*data);
 
 }

@@ -13,6 +13,9 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+// TODO: this assumes num and denom are positive
+#define PERC(num, denom) (num)>(denom) ? 100 : (int) (100 * ((num)*1. / (denom)))
+
 struct free_col_args {
   void (*free_node)(void **node, void *args);
   void *args;
@@ -116,7 +119,7 @@ int Frame_load(Frame_T frame, Data_T data) {
 
 }
 
-int Frame_print(Frame_T frame, Data_T data, unsigned char action) {
+int Frame_print(Frame_T frame, Data_T data, int action) {
 
   assert(frame && Deque_length(frame->data));
   
@@ -143,7 +146,7 @@ int Frame_print(Frame_T frame, Data_T data, unsigned char action) {
 
         if (data->mvaddntok) 
           data->mvaddntok(0, text_start, Deque_get(frame->headers, icol),
-            text_width, data->args);
+            text_width, data->delim); // TODO: this should be args
         else 
           mvaddnstr(0, text_start, Deque_get(frame->headers, icol), text_width);
 
@@ -158,7 +161,7 @@ int Frame_print(Frame_T frame, Data_T data, unsigned char action) {
 
         if (data->mvaddntok)
           data->mvaddntok(irow + headers, text_start, 
-            Deque_get(col, irow), text_width, data->args);
+            Deque_get(col, irow), text_width, data->delim);
         else
           mvaddnstr(irow + headers, text_start, Deque_get(col, irow), text_width);
 
@@ -173,8 +176,32 @@ int Frame_print(Frame_T frame, Data_T data, unsigned char action) {
     chgat(frame->col_width-1, A_NORMAL, 0, NULL);
   }
 
+  int cur_row_ind = frame->cursor.row + frame->data_loaded.first_row + 
+    !frame->headers - 1;
+
+  // Print cursor coordinates
+  char loc_buf[MAX_ROWS + MAX_COLS + 2] = { 0 };
+  sprintf(loc_buf, "%d,%d", 
+    cur_row_ind + 1,
+    (frame->cursor.col/frame->col_width) + frame->data_loaded.first_col + 1
+  );
+  mvaddnstr(LINES-1, COLS - 18, loc_buf, 10); // TODO: make this limit dynamic
+
+  // Print percentage read
+  char perc_buf[4] = { 0 };
+  sprintf(perc_buf, "%2d%%", PERC(data->row_offsets[cur_row_ind], data->st_size));
+
+  char *str;
+  if (data->row_offsets[cur_row_ind] == 0) str = "Top";
+  else if (data->row_offsets[cur_row_ind+1] == data->st_size) str = "Bot";
+  else str = perc_buf;
+
+  mvaddnstr(LINES-1, COLS - 4, str, 3);
+
+  // Highlight the current cell
   move(frame->cursor.row, frame->cursor.col);
   chgat(frame->col_width-1, A_REVERSE, 0, NULL);
+
   refresh();
 
   return E_OK;

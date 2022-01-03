@@ -36,22 +36,18 @@ cmd:
   LEFT                  {
                           if (frame->cursor.col/frame->col_width > 0) {
                             frame->cursor.col -= frame->col_width;
-                            // Frame_print(frame, O_FRM_CURS);
                             Frame_print(frame, data, O_FRM_CURS);
                           } else if (frame->data_loaded.first_col > 0) {
                             Frame_shift_col(frame, data, -1);
-                            // Frame_print(frame, O_FRM_DATA);
                             Frame_print(frame, data, O_FRM_DATA);
                           }
                         }
   | RIGHT               {
                           if (frame->cursor.col/frame->col_width < frame->ncols-1) {
                             frame->cursor.col += frame->col_width;
-                            // Frame_print(frame, O_FRM_CURS);
                             Frame_print(frame, data, O_FRM_CURS);
                           } else if (frame->data_loaded.last_col < data->ncols-1) {
                             Frame_shift_col(frame, data, 1);
-                            // Frame_print(frame, O_FRM_DATA);
                             Frame_print(frame, data, O_FRM_DATA);
                           }
                           // TODO: print errors (parse/oob) in status row
@@ -59,12 +55,10 @@ cmd:
   | UP                  {
                           if (frame->cursor.row > 0) {
                             frame->cursor.row--;
-                            // Frame_print(frame, O_FRM_CURS);
                             Frame_print(frame, data, O_FRM_CURS);
                           } else if 
                             (frame->data_loaded.first_row > !!frame->headers) {
                             Frame_shift_row(frame, data, -1);
-                            // Frame_print(frame, O_FRM_DATA);
                             Frame_print(frame, data, O_FRM_DATA);
                           }
                         }
@@ -72,10 +66,8 @@ cmd:
   | DOWN                {
                           if (frame->cursor.row < frame->nrows - 1) {
                             frame->cursor.row++;
-                            // Frame_print(frame, O_FRM_CURS);
                             Frame_print(frame, data, O_FRM_CURS);
                           } else if (Frame_shift_row(frame, data, 1) == E_OK)
-                            // Frame_print(frame, O_FRM_DATA);
                             Frame_print(frame, data, O_FRM_DATA);
                           // TODO: print errors (parse/oob) in status row
                         }
