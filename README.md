@@ -28,8 +28,16 @@ make check
 make install
 ```
 
-## Notes
+## Limitations / Bugs
 
-As `preview` is free software, I make no guarantee to its performance.
-Currently, there's no support for piping, meaning `cat <data> | preview`
-doesn't work. This is being added now.
+Some known limitations, which are actively being worked on. Known bugs
+will also be recorded here, when I get around to it.
+
+- There's no support for piping, meaning `cat <data> | preview`
+doesn't work. Piped streams will require standard file I/O, that is `read` and
+`write`, limiting the maximum data sizes.
+
+- The only supported navigation is through vim bindings:
+`h` (left), `j` (down), `k` (up), and `l` (right). The input scanner is
+a small `flex` program, which as it turns out doesn't interface that nicely
+with `ncurses`. This will be written as a custom scanner for use with `bison`.
