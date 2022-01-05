@@ -21,7 +21,7 @@ At the time of writing, `preview` hasn't been tested on MacOS.
 
 ```
 git clone --depth 1 git@github.com:tmwayne/preview.git && cd preview
-sh ./bootstrap
+sh bootstrap
 ./configure
 make
 make check
