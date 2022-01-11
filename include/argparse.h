@@ -13,7 +13,12 @@
 
 // TODO: do error checking on arguments here
 
-const char *argp_program_version = "Preview\n";
+const char *argp_program_version = "Preview v0.1\n"
+  "Copyright © 2021 Tyler Wayne\n"
+  "Licensed under the Apache License, Version 2.0\n"
+  "\n"
+  "Written by Tyler Wayne.";
+
 const char *argp_program_bug_address = "<tylerwayne3@gmail.com>";
 
 struct arguments {
@@ -24,9 +29,9 @@ struct arguments {
 };
 
 static struct argp_option options[] = {
-  {"delimiter", 'd', "DELIM", 0, "Use DELIM instead of PIPE"},
+  {"delimiter", 'd', "DELIM", 0, "Use DELIM instead of COMMA"},
   {"col-width", 'c', "NUM", 0, "Character width of columns"},
-  {"no-header", 'h', 0, 0, "Skip header row"},
+  {"no-header", 'h', 0, 0, "Enable header row"},
   {0}
 };
 
@@ -44,7 +49,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
       break;
 
     case 'h':
-      arguments->headers = 0;
+      arguments->headers = 1;
       break;
 
     // Position args

@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 
   // Default arguments
   struct arguments arguments;
-  arguments.headers = 1;
+  arguments.headers = 0;
   arguments.col_width = 16;
   arguments.delim = ',';
 
