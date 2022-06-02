@@ -80,6 +80,7 @@ int main(int argc, char **argv) {
   );
   if (!frame) EXIT("Error initializing frame\n");
 
+  // TODO: check if the file can be mmapped, if it can't use file buffers
   data = Data_mmap_init(
     arguments.path,       // path
     arguments.delim       // delim

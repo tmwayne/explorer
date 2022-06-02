@@ -24,8 +24,8 @@ AC_PROG_LEX([noyywrap])
 
 # Checks for libraries.
 AC_SEARCH_LIBS([dlopen], [dl])
-AC_SEARCH_LIBS([initscr], [ncurses])
-AC_SEARCH_LIBS([stdscr], [ncurses tinfo])
+AC_SEARCH_LIBS([initscr], [ncursesw])
+AC_SEARCH_LIBS([stdscr], [ncursesw tinfo])
 
 # Checks for header files.
 AC_CHECK_HEADERS([])
